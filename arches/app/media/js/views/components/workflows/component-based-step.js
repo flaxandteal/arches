@@ -60,6 +60,7 @@ define([
 
         this.loadData = function(data) {
             /* a flat object of the previously saved data for all tiles */ 
+            var previouslySavedTile = data.length ? data[0] : data;
             var tileDataLookup = data.reduce(function(acc, componentData) {
                 var parsedTileData = JSON.parse(componentData.tileData);
 
@@ -70,7 +71,6 @@ define([
                 return acc;
             }, {});
 
-
             self.tiles().forEach(function(tile) {
                 /* force the value of current tile data observables */ 
                 Object.keys(tile.data).forEach(function(key) {
@@ -80,9 +80,9 @@ define([
                 });
                 tile._tileData(koMapping.toJSON(tile.data));
 
-                tile.nodegroup_id = data.nodegroupId;
-                tile.tileid = data.tileId;
-                tile.resourceinstance_id = data.resourceInstanceId;
+                tile.nodegroup_id = previouslySavedTile.nodegroupId;
+                tile.tileid = previouslySavedTile.tileId;
+                tile.resourceinstance_id = previouslySavedTile.resourceInstanceId;
             });
         };
 

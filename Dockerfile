@@ -74,6 +74,7 @@ RUN set -ex \
         python3.8-distutils \
         python3.8-venv \
     " \
+    && apt-get update -y \
     && apt-get install -y --no-install-recommends curl \
     && curl -sL https://deb.nodesource.com/setup_10.x | bash - \
     && curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
@@ -86,9 +87,9 @@ RUN set -ex \
     && npm install -g yarn
 
 # Install Yarn components
-COPY ./arches/install/package.json ${ARCHES_ROOT}/arches/install/package.json
-COPY ./arches/install/.yarnrc ${ARCHES_ROOT}/arches/install/.yarnrc
-COPY ./arches/install/yarn.lock ${ARCHES_ROOT}/arches/install/yarn.lock
+COPY ./arches/install/arches-templates/project_name/package.json ${ARCHES_ROOT}/arches/install/package.json
+COPY ./arches/install/arches-templates/project_name/.yarnrc ${ARCHES_ROOT}/arches/install/.yarnrc
+# COPY ./arches/install/arches-templates/project_name/yarn.lock ${ARCHES_ROOT}/arches/install/yarn.lock
 WORKDIR ${ARCHES_ROOT}/arches/install
 RUN mkdir -p ${ARCHES_ROOT}/arches/app/media/packages
 RUN yarn install

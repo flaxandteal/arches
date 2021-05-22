@@ -1,6 +1,6 @@
 {
-    "name": "{{ project_name }}",
+    "name": "fatdemo",
     "dependencies": {
-        "arches": "archesproject/arches#{{ arches_version }}"
+        "arches": "archesproject/arches#5.0.0"
     }
 }

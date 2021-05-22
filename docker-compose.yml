@@ -42,8 +42,8 @@ services:
       image: cvast/cvast-nginx:1.2.0
       restart: unless-stopped
       ports:
-        - '80:80'
-        - '443:443'
+        - '8080:80'
+        - '4430:443'
       volumes:
         - arches-static:/www/static
         - letsencrypt-acme-challenge:/var/www

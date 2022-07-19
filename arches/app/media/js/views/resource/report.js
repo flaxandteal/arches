@@ -4,7 +4,6 @@ import ko from 'knockout';
 import BaseManagerView from 'views/base-manager';
 import 'views/components/resource-report-abstract';
 
-
 var View = BaseManagerView.extend({
     initialize: function(options){
         BaseManagerView.prototype.initialize.call(this, options);

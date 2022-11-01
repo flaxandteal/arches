@@ -91,7 +91,7 @@ COPY ./package.json ${ARCHES_ROOT}/arches/install/package.json
 COPY ./.yarnrc ${ARCHES_ROOT}/arches/install/.yarnrc
 COPY ./yarn.lock ${ARCHES_ROOT}/arches/install/yarn.lock
 WORKDIR ${ARCHES_ROOT}/arches/install
-RUN mkdir -p ${ARCHES_ROOT}/arches/app/media/packages
+RUN mkdir -p ${ARCHES_ROOT}/arches/app/media/node_modules
 RUN yarn install
 
 ## Install virtualenv

@@ -1,19 +1,21 @@
 define([
     'underscore',
     'jquery',
-    'arches',
     'knockout',
     'knockout-mapping',
+    'arches',
     'models/graph',
     'viewmodels/card',
     'viewmodels/provisional-tile',
     'viewmodels/alert',
     'uuid',
-], function(_, $, arches, ko, koMapping, GraphModel, CardViewModel, ProvisionalTileViewModel, AlertViewModel, uuid) {
-    WORKFLOW_COMPONENT_ABSTRACTS_LABEL = 'workflow-component-abstracts';
+    'templates/views/components/workflows/workflow-component-abstract.htm',
+], function(_, $, ko, koMapping, arches, GraphModel, CardViewModel, ProvisionalTileViewModel, AlertViewModel, uuid, workflowComponentAbstractTemplate) {
+    const WORKFLOW_COMPONENT_ABSTRACTS_LABEL = 'workflow-component-abstracts';
 
     function NonTileBasedComponent() {
         var self = this;
+         
 
         this.initialize = function() {
             self.loading(false);
@@ -39,6 +41,7 @@ define([
 
     function TileBasedComponent() {
         var self = this;
+         
 
         this.tile = ko.observable();
         this.tiles = ko.observable();
@@ -47,11 +50,12 @@ define([
         this.topCards = ko.observable();
 
         this.loadData = function(loadedData) {
+            let data;
             if (!Array.isArray(loadedData)) {
-                var data = [loadedData]
+                data = [loadedData];
             }
             else {
-                var data = loadedData;
+                data = loadedData;
             }
             
             /* a flat object of the previously saved data for all tiles */ 
@@ -280,6 +284,7 @@ define([
 
     function AbstractCardAdapter() {  // CURRENTLY IN DEVLEOPMENT, USE AT YOUR OWN RISK!
         var self = this;
+         
 
         this.cardinality = ko.observable();
 
@@ -289,7 +294,9 @@ define([
             $.getJSON(( arches.urls.api_nodegroup(self.componentData.parameters['nodegroupid']) ), function(nodegroupData) {
                 self.cardinality(nodegroupData.cardinality);
 
-                $.getJSON(( arches.urls.resource + `/${self.componentData.parameters['resourceid']}/tiles?nodeid=${self.componentData.parameters['nodegroupid']}` ), function(data) {
+                const resourceInstanceOrGraphId = self.componentData.parameters['resourceid'] || self.componentData.parameters['graphid'];
+
+                $.getJSON(( arches.urls.resource + `/${resourceInstanceOrGraphId}/tiles?nodeid=${self.componentData.parameters['nodegroupid']}` ), function(data) {
                     if (self.cardinality() === '1') {
                         if (data['tiles'].length) {
                             self.componentData.parameters['tileid'] = data['tiles'][0]['tileid'];
@@ -303,8 +310,15 @@ define([
                             self.complete(true);
                         }
                         
+                        self.card.subscribe(function(card) {
+                            if (!card.selected()) {
+                                card.selected(card.tiles().length);
+                            }
+                        });
+
                         self.onSaveSuccess = function(_savedData) {  // LEGACY -- DO NOT USE
                             self.componentData.parameters.dirty(false);
+                            self.card().selected(true);
                             self.dirty(false);
                             self.saving(false);
                             self.complete(true);
@@ -320,6 +334,8 @@ define([
 
     function MultipleTileBasedComponent(title) {
         var self = this;
+         
+
         TileBasedComponent.apply(this);
 
         this.tileLoadedInEditor = ko.observable();
@@ -564,6 +580,7 @@ define([
 
     function WorkflowComponentAbstract(params) {
         var self = this;
+         
 
         this.workflowId = params.workflowId;
         this.componentData = params.componentData;
@@ -618,13 +635,14 @@ define([
                     hasUnsavedData = true;
                 }
             }
+
             return hasUnsavedData;
         });
 
         this.initialize = function() {
             /* cached ID logic */ 
             if (params.workflowComponentAbstractId) {
-                self.id(params.workflowComponentAbstractId)
+                self.id(params.workflowComponentAbstractId);
             }
             else {
                 self.id(uuid.generate());
@@ -683,7 +701,7 @@ define([
             else if (self.componentData.tilesManaged === "many") {
                 MultipleTileBasedComponent.apply(self, [params.title] );
             }
-        }
+        };
 
         this.setToLocalStorage = function(key, value) {
             var allComponentsLocalStorageData = JSON.parse(localStorage.getItem(WORKFLOW_COMPONENT_ABSTRACTS_LABEL)) || {};
@@ -760,9 +778,7 @@ define([
     }
 
     ko.components.register('workflow-component-abstract', {
-        template: {
-            require: 'text!templates/views/components/workflows/workflow-component-abstract.htm'
-        }
+        template: workflowComponentAbstractTemplate,
     });
 
     return WorkflowComponentAbstract;

@@ -5,9 +5,9 @@ define([
     'arches',
     'viewmodels/card-component',
     'viewmodels/alert',
-    'chosen'
-], function(_, $, ko, arches, CardComponentViewModel, AlertViewModel) {
-
+    'templates/views/components/cards/grouping.htm',
+    'chosen',
+], function(_, $, ko, arches, CardComponentViewModel, AlertViewModel, groupingCardTemplate) {
     var flattenTree = function(parents, flatList) {
         _.each(ko.unwrap(parents), function(parent) {
             flatList.push(parent);
@@ -22,9 +22,12 @@ define([
     function viewModel(params) {
         // params.form is the CardTreeViewModel
         var self = this;
+         
         this.saving = params.form?.saving || ko.observable(false);
         this.tiles = [];
         this.widgetInstanceDataLookup = {};
+        this.showGrid = params?.form?.showGrid;
+        this.toggleGrid = params?.form?.toggleGrid;
 
         /*
             'sortedWidgetIds' originally referred to entries in the
@@ -201,7 +204,7 @@ define([
         if (ko.isObservable(params.dirty)) {
             this.dirty.subscribe(function(dirty) {
                 params.dirty(dirty);
-            })
+            });
         }
 
         this.previouslySaved = ko.computed(function() {
@@ -309,9 +312,7 @@ define([
 
     ko.components.register('grouping-card-component', {
         viewModel: viewModel,
-        template: {
-            require: 'text!templates/views/components/cards/grouping.htm'
-        }
+        template: groupingCardTemplate,
     });
     return viewModel;
 });

@@ -23,6 +23,7 @@ define([
          
         WidgetViewModel.apply(this, [params]);
         const self = this;
+        console.log(self)
 
         self.card = params.card;
         self.currentLanguage = ko.observable({code: arches.activeLanguage});
@@ -40,7 +41,7 @@ define([
         initialDefault[arches.activeLanguage] = {value: '', direction: 'ltr'};
         initialCurrent[arches.activeLanguage] = {value: '', direction: 'ltr'};
         let currentDefaultValue = ko.unwrap(self.defaultValue) || initialDefault;
-        let currentValue = koMapping.toJS(self.value);
+        let currentValue = koMapping.toJS(self.value) || initialCurrent;
 
         if(self.form){
             self.form.on('tile-reset', (x) => {

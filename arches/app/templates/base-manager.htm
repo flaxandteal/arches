@@ -351,18 +351,30 @@
 
                 <div class="col-xs-12 col-sm-8 flex">
 
-                    <!-- Tools Menu -->
-                    {% if nav.menu %}
-                        <a id="menu-control" href="" class="ep-tools ep-tool-title"
-                            data-bind="click:function() { menuActive(!menuActive()); }, clickBubble: false">
-                            <div class="flex">{% trans "Manage" %}
-                                <i class="ion-more" style="padding: 0px 5px;"></i>
-                            </div>
-                        </a>
-                        {% if main_script == 'views/resource/editor' %}
-                            {% include 'navbar/resource-manage-menu.htm' %}
-                        {% elif main_script == 'views/graph/function-manager' %}
-                            {% include 'navbar/function-manage-menu.htm' %}
+                {% block graph_title %}
+                <!-- Page Title and Icon -->
+                <div class="ep-tools-title">
+                    <h1 class="page-header text-overflow ep-graph-title">
+                        <i class="fa {{graph.iconclass|default:nav.icon}} text-center icon-wrap bg-gray ep-graph-title-icon"></i>
+                        <span>{% trans nav.title %}</span>
+                    </h1>
+                </div>
+                {% endblock graph_title %}
+
+                <!-- Login -->
+                {% if nav.login %}
+                <a
+                    href="{% if user.username != 'anonymous' %}{% url 'user_profile_manager' %}{% else %}{% url 'auth' %}?next={% url 'home' %}{% endif %}"
+                    class="ep-tools ep-tools-login"
+                >
+                    <div
+                        class=""
+                        data-placement="bottom"
+                        data-toggle="tooltip"
+                        data-original-title="{% if user.username != 'anonymous' %}{% trans 'Profile' %}{% else %}{% trans 'Login' %}{% endif %}"
+                    >
+                        {% if user.username == 'anonymous' %}
+                            <h5 class="hidden-xs">{% trans "Login" %}</h5>
                         {% else %}
                             {% include 'navbar/graph-designer-menu.htm' %}
                         {% endif %}

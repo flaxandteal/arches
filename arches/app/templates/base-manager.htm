@@ -239,89 +239,17 @@
                                     </a>
                                 </li>
                                 {% endif %}
-                            </div>
-                        </a>
-                        {% endif %}
-
-                        {% if show_language_swtich %}
-                        {% get_current_language as LANGUAGE_CODE %}
-                            <div class="lang-switch ep-tools ep-tools-right" style="max-width: none;"
-                            data-bind='component: {
-                                name: "views/components/language-switcher",
-                                params: {
-                                    current_language: "{{LANGUAGE_CODE}}"
-                                }
-                            }'></div>
-                        {% endif %}
-
-                        <!-- Search Bar -->
-                        {% if nav.search %}
-                        <a href="{% url 'search_home' %}" class="ep-tools ep-tools-right" data-bind="click:function () { navigate('{% url 'search_home' %}') }">
-                            <div class="d-inline" data-placement="bottom" data-toggle="tooltip" style="width: 100px;"data-original-title='{% trans "Search" %}'>
-                                <i class="ion-search"></i>
-                            </div>
-                            <h5 class="d-inline" style="margin-left: -80px;">Search</h5>
-                        </a>
-                        {% endif %}
-
-                        <!-- Notifications -->
-                        {% if nav.notifs %}
-                        <a href="" class="ep-tools ep-notifs-toggle ep-tools-right" data-bind="click: function() {getNotifications();}">
-                            <div class="" data-placement="bottom" data-toggle="tooltip" aria-expanded="true" data-original-title="{% trans 'Notifications' %}">
-                                <div >
-                                    <div data-bind="visible: unreadNotifs()" id="circle"></div>
-                                    <div data-bind="visible: unreadNotifs()" id="circle-outline"></div>
-                                    <i class="fa fa-bell"></i>
-                                </div>
-                            </div>
-                        </a>
-                        {% endif %}
-
-
-                        <!-- Prov edit history-->
-                        {% if user_is_reviewer == False and user_can_edit %}
-                        <a href="{% url 'search_home' %}" class="ep-edits-toggle ep-tools ep-tools-right" data-bind="click:function () { getProvisionalHistory(); }">
-                            <div class="" data-placement="bottom" data-toggle="tooltip" data-original-title='{% trans "My Recent Edits" %}'>
-                              <i class="ion-clock"></i>
-                            </div>
-                        </a>
-                        {% endif %}
-
-                        {% if nav.res_edit and user_can_edit %}
-                        <a href="{% url 'resource_editor' resourceid %}" class="ep-tools ep-tools-right" data-bind="click:function () { navigate('{% url 'resource_editor' resourceid %}') }">
-                            <div class="" data-placement="bottom" data-toggle="tooltip" data-original-title='{% trans "Edit Resource" %}'>
-                              <i class="ion-edit"></i>
-                            </div>
-                        </a>
-                        {% endif %}
-
-                        {% if nav.print %}
-                        <a href="" class="ep-tools ep-tools-right" data-bind="click: function() { window.print() }">
-                            <div class="" data-placement="bottom" data-toggle="tooltip" data-original-title='{% trans "Print" %}'>
-                              <i class="ion-printer"></i>
-                            </div>
-                        </a>
-                        {% endif %}
-
-                        {% if nav.help %}
-                        <a href="javascript:void(0)" class="ep-help-toggle ep-tools ep-tools-right" data-bind="click: function(){ getHelp('{{ nav.help.template }}'); helpOpen(true) }">
-                            <div class="" data-placement="bottom" data-toggle="tooltip" data-original-title='{% trans "Help" %}'>
-                              <i class="ion-help"></i>
-                            </div>
-                        </a>
-                        {% endif %}
-                    </div>
-
-                    <!-- Notifications Panel -->
-                    <div id="ep-notifs-panel" class="ep-notifs" style="display:none;">
-                            <div class="ep-edits-header">
-                                <div class="ep-help-title">
-                                    <span>{% trans 'Notifications' %}</span>
-                                </div>
-                                <a href="javascript:void(0);" data-bind="click: function() {getNotifications();}" class="ep-notifs-toggle ep-notifs-close ep-tools ep-tools-right">
-                                    <div class="" data-placement="bottom" data-toggle="tooltip" data-original-title='{% trans "Close" %}'>
-                                      <i class="fa fa-times-circle fa-lg"></i>
-                                    </div>
+                            {% else %}
+                            <li{% if main_script == "views/plugin" and plugin.pluginid == p.pluginid %} class="active-sub" {% endif %}>
+                                {% if p.slug is not None %}
+                                <a href="{% url 'plugins' p.slug %}" data-bind="click: navigate.bind(this, '{% url 'plugins' p.slug %}') ">
+                                {% else %}
+                                <a href="{% url 'plugins' p.pluginid %}" data-bind="click: navigate.bind(this, '{% url 'plugins' p.pluginid %}') ">
+                                {% endif %}
+                                    <i class="{{p.icon}}"></i>
+                                    <span class="menu-title">
+                                        <strong>{{p.name}}</strong>
+                                    </span>
                                 </a>
                             </li>
                             {% endif %}
@@ -351,30 +279,18 @@
 
                 <div class="col-xs-12 col-sm-8 flex">
 
-                {% block graph_title %}
-                <!-- Page Title and Icon -->
-                <div class="ep-tools-title">
-                    <h1 class="page-header text-overflow ep-graph-title">
-                        <i class="fa {{graph.iconclass|default:nav.icon}} text-center icon-wrap bg-gray ep-graph-title-icon"></i>
-                        <span>{% trans nav.title %}</span>
-                    </h1>
+                    <!-- Tools Menu -->
+                    {% if nav.menu %}
+                        <a id="menu-control" href="" class="ep-tools ep-tool-title"
+                            data-bind="click:function() { menuActive(!menuActive()); }, clickBubble: false">
+                            <div class="flex">{% trans "Manage" %}
+                                <i class="ion-more" style="padding: 0px 5px;"></i>
                 </div>
-                {% endblock graph_title %}
-
-                <!-- Login -->
-                {% if nav.login %}
-                <a
-                    href="{% if user.username != 'anonymous' %}{% url 'user_profile_manager' %}{% else %}{% url 'auth' %}?next={% url 'home' %}{% endif %}"
-                    class="ep-tools ep-tools-login"
-                >
-                    <div
-                        class=""
-                        data-placement="bottom"
-                        data-toggle="tooltip"
-                        data-original-title="{% if user.username != 'anonymous' %}{% trans 'Profile' %}{% else %}{% trans 'Login' %}{% endif %}"
-                    >
-                        {% if user.username == 'anonymous' %}
-                            <h5 class="hidden-xs">{% trans "Login" %}</h5>
+                        </a>
+                        {% if main_script == 'views/resource/editor' %}
+                            {% include 'navbar/resource-manage-menu.htm' %}
+                        {% elif main_script == 'views/graph/function-manager' %}
+                            {% include 'navbar/function-manage-menu.htm' %}
                         {% else %}
                             {% include 'navbar/graph-designer-menu.htm' %}
                         {% endif %}

@@ -325,7 +325,7 @@ OAUTH_CLIENT_ID = ""  # '9JCibwrWQ4hwuGn5fu2u1oRZSs9V6gK8Vu8hpRC4'
 AUTHENTICATION_BACKENDS = (
     "arches.app.utils.email_auth_backend.EmailAuthenticationBackend",
     "oauth2_provider.backends.OAuth2Backend",
-    "dauthz.backends.CasbinBackend",
+    #"dauthz.backends.CasbinBackend",
     "django.contrib.auth.backends.ModelBackend",  # this is default
     #"arches.app.utils.permission_backend.PermissionBackend",
     "arches.app.utils.external_oauth_backend.ExternalOauthAuthenticationBackend",
@@ -350,7 +350,7 @@ INSTALLED_APPS = (
     "oauth2_provider",
     "django_celery_results",
     "compressor",
-    "dauthz.apps.DauthzConfig"
+    #"dauthz.apps.DauthzConfig"
 )
 
 MIDDLEWARE = [
@@ -366,7 +366,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     # "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "dauthz.middlewares.request_middleware.RequestMiddleware",
+    #"dauthz.middlewares.request_middleware.RequestMiddleware",
     "arches.app.utils.middleware.SetAnonymousUser",
 ]
 
@@ -747,29 +747,6 @@ def JSON_LD_FIX_DATA_FUNCTION(data, jsdata, model):
     return jsdata
 
 PERMISSION_FRAMEWORK = "arches_standard.ArchesStandardPermissionFramework"
-CASBIN_MODEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app', 'permissions', 'casbin.conf')
-
-DAUTHZ = {
-    # DEFAULT Dauthz enforcer
-    "DEFAULT": {
-        # Casbin model setting.
-        "MODEL": {
-            # Available Settings: "file", "text"
-            "CONFIG_TYPE": "file",
-            "CONFIG_FILE_PATH": CASBIN_MODEL,
-            "CONFIG_TEXT": "",
-        },
-        # Casbin adapter .
-        "ADAPTER": {
-            "NAME": "casbin_adapter.adapter.Adapter",
-            # 'OPTION_1': '',
-        },
-        "LOG": {
-            # Changes whether Dauthz will log messages to the Logger.
-            "ENABLED": False,
-        },
-    },
-}
 
 ##########################################
 ### END RUN TIME CONFIGURABLE SETTINGS ###

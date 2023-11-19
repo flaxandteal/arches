@@ -1,4 +1,5 @@
 import json
+import re
 import pyprind
 import csv
 import shutil
@@ -969,11 +970,21 @@ class Command(BaseCommand):
                             os.path.join(package_dir, "business_data", ext)
                         )
 
+            def _path_to_mapping(path):
+                prefix, suffix = os.path.splitext(path)
+                prefix = re.sub(r"_[0-9]+$", "", prefix)
+                if suffix == ".csv":
+                    if os.path.isfile(prefix + ".mapping"):
+                        return prefix + ".mapping"
+                    return False
+
+                return None
+
+
             erring_csvs = [
                 path
                 for path in business_data
-                if os.path.splitext(path)[1] == ".csv"
-                and os.path.isfile(os.path.splitext(path)[0] + ".mapping") is False
+               if _path_to_mapping(path) is False
             ]
             message = f"The following .csv files will not load because they are missing accompanying .mapping files: \n\t {','.join(erring_csvs)}"
             if len(erring_csvs) > 0:
@@ -999,11 +1010,7 @@ class Command(BaseCommand):
                 valid_resource_paths = [
                     path
                     for path in business_data
-                    if (
-                        ".csv" in path
-                        and os.path.exists(path.replace(".csv", ".mapping"))
-                    )
-                    or (".json" in path)
+                    if (_path_to_mapping(path) is False) or (".json" in path)
                 ]
 
                 # assumes resources in csv do not depend on data being loaded prior from json in same dir
@@ -1076,7 +1083,7 @@ class Command(BaseCommand):
                     )
                     if os.path.exists(dest_path) is False:
                         if os.path.exists(template_dir) is False:
-                            os.mkdir(template_dir)
+                            os.makedirs(template_dir)
                         shutil.copy(templates[0], template_dir)
                     else:
                         logger.info(
@@ -1091,7 +1098,7 @@ class Command(BaseCommand):
                     )
                     if os.path.exists(dest_path) is False:
                         if os.path.exists(component_dir) is False:
-                            os.mkdir(component_dir)
+                            os.makedirs(component_dir)
                         shutil.copy(components[0], component_dir)
                     else:
                         logger.info(
@@ -1300,7 +1307,7 @@ class Command(BaseCommand):
         if os.path.exists(css_source):
             css_dest = os.path.join(root, "media", "css")
             if not os.path.exists(css_dest):
-                os.mkdir(css_dest)
+                os.makedirs(css_dest)
             css_files = glob.glob(os.path.join(css_source, "*.css"))
             for css_file in css_files:
                 shutil.copy(css_file, css_dest)

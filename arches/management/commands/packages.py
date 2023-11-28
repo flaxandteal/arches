@@ -9,6 +9,7 @@ import sys
 import urllib.request, urllib.parse, urllib.error
 import os
 import warnings
+import imp
 import logging
 from arches.management.commands import utils
 from arches.app.utils.i18n import LanguageSynchronizer
@@ -81,6 +82,7 @@ class Command(BaseCommand):
             "--operation",
             action="store",
             dest="operation",
+            default="setup",
             choices=[
                 "setup",
                 "install",
@@ -111,29 +113,14 @@ class Command(BaseCommand):
 
         group = parser.add_mutually_exclusive_group()
         group.add_argument(
-            "-s",
-            "--source",
-            action="store",
-            dest="source",
-            default="",
-            help="Directory or file for processing",
+            "-s", "--source", action="store", dest="source", default="", help="Directory or file for processing",
         )
         group.add_argument(
-            "-a",
-            "--arches-application",
-            action="store",
-            dest="arches_application",
-            default="",
-            help="Name of Arches Application",
+            "-a", "--arches-application", action="store", dest="arches_application", default="", help="Name of Arches Application",
         )
 
         parser.add_argument(
-            "-f",
-            "--format",
-            action="store",
-            dest="format",
-            default="arches",
-            help="Format: shp or arches",
+            "-f", "--format", action="store", dest="format", default="arches", help="Format: shp or arches",
         )
 
         parser.add_argument(
@@ -172,12 +159,7 @@ class Command(BaseCommand):
         )
 
         parser.add_argument(
-            "-c",
-            "--config_file",
-            action="store",
-            dest="config_file",
-            default=None,
-            help="Usually an export mapping file.",
+            "-c", "--config_file", action="store", dest="config_file", default=None, help="Usually an export mapping file.",
         )
 
         parser.add_argument(
@@ -254,6 +236,15 @@ class Command(BaseCommand):
             "--bulk_load",
             action="store_true",
             dest="bulk_load",
+            help="Bulk load values into the database.  By setting this flag the system will bypass any PreSave \
+            functions attached to the resource, as well as prevent some logging statements from printing to console.",
+        )
+
+        parser.add_argument(
+            "-bd",
+            "--no-business_data",
+            action="store_false",
+            dest="include_business_data",
             help="Bulk load values into the database.  By setting this flag the system will bypass any PreSave \
             functions attached to the resource, as well as prevent some logging statements from printing to console.",
         )
@@ -472,6 +463,7 @@ class Command(BaseCommand):
                 options["dev"],
                 False if str(options["defer_indexing"])[0].lower() == "f" else True,
                 False if arches_application_path is None else True,
+                options["include_business_data"]
             )
 
         if options["operation"] in ["create", "create_package"]:
@@ -685,6 +677,7 @@ class Command(BaseCommand):
         dev=False,
         defer_indexing=True,
         is_application=False,
+        include_business_data=True,
     ):
         celery_worker_running = task_management.check_if_celery_available()
 
@@ -790,7 +783,6 @@ class Command(BaseCommand):
             try:
                 with connection.cursor() as cursor:
                     for sql_file in sql_files:
-                        print("  %s" % sql_file)
                         with open(sql_file, "r") as f:
                             sql = f.read()
                             cursor.execute(sql)
@@ -1291,8 +1283,13 @@ class Command(BaseCommand):
         load_map_layers(package_location)
         print("loading search indexes")
         load_indexes(package_location)
-        print("loading business data - resource instances and relationships")
-        load_business_data(package_location, defer_indexing)
+
+        if include_business_data:
+            print("loading business data - resource instances and relationships")
+            load_business_data(package_location, defer_indexing)
+        else:
+            print("skipping business data - resource instances and relationships - as requested")
+
         print("loading resource views")
         load_resource_views(package_location)
         print("loading apps")

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """
 ARCHES - a program developed to inventory and manage immovable cultural heritage.
 Copyright (C) 2013 J. Paul Getty Trust and World Monuments Fund
@@ -40,6 +41,26 @@ class Dsl(object):
             self._dsl = value.dsl
         except AttributeError:
             self._dsl = value
+
+
+class UpdateByQuery(Dsl):
+    def __init__(self, se, **kwargs):
+        self.se = se
+        self.query = kwargs.pop("query", Query(se))
+        self.script = kwargs.pop("script", None)
+        if self.query is None:
+            raise UpdateByQueryDSLException(_('You need to specify a "query"'))
+        if self.script is None:
+            raise UpdateByQueryDSLException(_('You need to specify a "script"'))
+
+
+    def run(self, index="", **kwargs):
+        self.query.prepare()
+        self.dsl = {
+            "query": self.query.dsl["query"],
+            "script": self.script
+        }
+        return self.se.update_by_query(index=index, **self.dsl)
 
 
 class Query(Dsl):
@@ -714,4 +735,7 @@ class NestedAgg(Aggregation):
 
 
 class NestedAggDSLException(Exception):
+    pass
+
+class UpdateByQueryDSLException(Exception):
     pass

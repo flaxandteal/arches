@@ -16,6 +16,7 @@ from arches.app.utils.permission_backend import (
     user_is_resource_exporter,
 )
 from arches.app.utils.string_utils import get_str_kwarg_as_bool
+from arches.app.utils.betterJSONSerializer import JSONDeserializer
 from django.utils.translation import gettext as _
 from datetime import datetime
 import logging
@@ -131,16 +132,17 @@ class StandardSearchView(BaseSearchView):
         search_query_object["query"].include("displaydescription")
         search_query_object["query"].include("map_popup")
         search_query_object["query"].include("provisional_resource")
+        search_query_object["query"].include("sets")
         search_query_object["query"].include("permissions")
-        load_tiles = get_str_kwarg_as_bool("tiles", self.request.GET)
+        load_tiles = get_str_kwarg_as_bool("tiles", self.parameters)
         if load_tiles:
             search_query_object["query"].include("tiles")
 
     def execute_query(self, search_query_object, response_object, **kwargs):
-        for_export = get_str_kwarg_as_bool("export", self.request.GET)
-        pages = self.request.GET.get("pages", None)
-        total = int(self.request.GET.get("total", "0"))
-        resourceinstanceid = self.request.GET.get("id", None)
+        for_export = get_str_kwarg_as_bool("export", self.parameters)
+        pages = self.parameters.get("pages", None)
+        total = int(self.parameters.get("total", "0"))
+        resourceinstanceid = self.parameters.get("id", None)
         dsl = search_query_object["query"]
         if for_export or pages:
             results = dsl.search(index=RESOURCES_INDEX, scroll="1m")
@@ -174,10 +176,10 @@ class StandardSearchView(BaseSearchView):
 
     def post_search_hook(self, search_query_object, response_object, **kwargs):
         dsl = search_query_object["query"]
-        response_object["reviewer"] = user_is_resource_reviewer(self.request.user)
+        response_object["reviewer"] = user_is_resource_reviewer(self.user)
         response_object["timestamp"] = datetime.now()
         response_object["total_results"] = dsl.count(index=RESOURCES_INDEX)
-        response_object["userid"] = self.request.user.id
+        response_object["userid"] = self.user.id
 
     def get_searchview_filters(self):
         search_filters = [
@@ -185,7 +187,7 @@ class StandardSearchView(BaseSearchView):
             for available_filter in self.available_search_filters
             if available_filter.componentname != "search-export"
         ]
-        if user_is_resource_exporter(self.request.user):
+        if user_is_resource_exporter(self.user):
             search_filters.extend(
                 [
                     available_filter
@@ -206,11 +208,13 @@ class StandardSearchView(BaseSearchView):
         se = SearchEngineFactory().create()
         search_query_object = {"query": Query(se)}
         response_object = {"results": None}
-        sorted_query_obj = search_filter_factory.create_search_query_dict(
-            list(self.request.GET.items()) + list(self.request.POST.items())
-        )
-        permitted_nodegroups = get_permitted_nodegroups(self.request.user)
-        include_provisional = get_provisional_type(self.request)
+        sorted_query_obj = search_filter_factory.create_search_query_dict(self.parameters)
+        if self.user is not True:
+            permitted_nodegroups = get_permitted_nodegroups(self.user)
+        else:
+            permitted_nodegroups = True
+        provisional_filter = JSONDeserializer().deserialize(self.parameters.get("provisional-filter", "[]"))
+        include_provisional = get_provisional_type(provisional_filter, self.user)
         try:
             for filter_type, querystring in list(sorted_query_obj.items()):
                 search_filter = search_filter_factory.get_filter(filter_type)
@@ -221,7 +225,7 @@ class StandardSearchView(BaseSearchView):
                         include_provisional=include_provisional,
                         querystring=querystring,
                     )
-            append_instance_permission_filter_dsl(self.request, search_query_object)
+            append_instance_permission_filter_dsl(self.user, search_query_object)
         except Exception as err:
             logger.exception(err)
             message = {

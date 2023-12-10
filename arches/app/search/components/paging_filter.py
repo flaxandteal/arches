@@ -17,21 +17,21 @@ details = {
 
 class PagingFilter(BaseSearchFilter):
     def append_dsl(self, search_query_object, **kwargs):
-        export = self.request.GET.get("export", None)
-        mobile_download = self.request.GET.get("mobiledownload", None)
+        export = self.parameters.get("export", None)
+        mobile_download = self.parameters.get("mobiledownload", None)
         page = (
             1
-            if self.request.GET.get(self.componentname) == ""
-            else int(self.request.GET.get(self.componentname, 1))
+            if self.parameters.get(self.componentname) == ""
+            else int(self.parameters.get(self.componentname, 1))
         )
 
         if export is not None:
             limit = settings.SEARCH_RESULT_LIMIT
         elif mobile_download is not None:
-            limit = self.request.GET["resourcecount"]
+            limit = self.parameters["resourcecount"]
         else:
             limit = settings.SEARCH_ITEMS_PER_PAGE
-        limit = int(self.request.GET.get("limit", limit))
+        limit = int(self.parameters.get("limit", limit))
         search_query_object["query"].start = limit * int(page - 1)
         search_query_object["query"].limit = limit
 
@@ -44,12 +44,12 @@ class PagingFilter(BaseSearchFilter):
         )
         page = (
             1
-            if self.request.GET.get(self.componentname) == ""
-            else int(self.request.GET.get(self.componentname, 1))
+            if self.parameters.get(self.componentname) == ""
+            else int(self.parameters.get(self.componentname, 1))
         )
 
         paginator, pages = get_paginator(
-            self.request,
+            self.parameters,
             response_object["results"],
             total,
             page,

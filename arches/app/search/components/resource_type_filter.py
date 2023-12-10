@@ -30,9 +30,15 @@ class ResourceTypeFilter(BaseSearchFilter):
         search_query = Bool()
         querystring_params = kwargs.get("querystring", "[]")
         graph_ids = []
-        permitted_graphids = get_permitted_graphids(permitted_nodegroups)
+        resourceTypeFilters = JSONDeserializer().deserialize(querystring_params)
+        if self.user is True:
+            permitted_graphids = [
+                str(resourceTypeFilter["graphid"]) for resourceTypeFilter in resourceTypeFilters
+            ]
+        else:
+            permitted_graphids = get_permitted_graphids(permitted_nodegroups)
 
-        for resourceTypeFilter in JSONDeserializer().deserialize(querystring_params):
+        for resourceTypeFilter in resourceTypeFilters:
             graphid = str(resourceTypeFilter["graphid"])
             if resourceTypeFilter["inverted"] is True:
                 try:
@@ -57,7 +63,7 @@ class ResourceTypeFilter(BaseSearchFilter):
             "resources": list(
                 GraphModel.objects.filter(
                     graphid__in=get_resource_types_by_perm(
-                        self.request.user, "read_nodegroup"
+                        self.user, "read_nodegroup"
                     )
                 )
             )

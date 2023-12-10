@@ -112,9 +112,10 @@ def add_geoshape_query_to_search_query(
         spatial_query.filter(geoshape)
 
     # get the nodegroup_ids that the user has permission to search
-    spatial_query.filter(
-        Terms(field="geometries.nodegroup_id", terms=permitted_nodegroups)
-    )
+    if self.user is not True:
+        spatial_query.filter(
+            Terms(field="geometries.nodegroup_id", terms=permitted_nodegroups)
+        )
 
     if include_provisional is False:
         spatial_query.filter(Terms(field="geometries.provisional", terms=["false"]))

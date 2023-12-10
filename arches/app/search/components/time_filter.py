@@ -65,9 +65,10 @@ class TimeFilter(BaseSearchFilter):
 
                 date_query = Bool()
                 date_query.filter(inverted_date_query)
-                date_query.filter(
-                    Terms(field="dates.nodegroup_id", terms=permitted_nodegroups)
-                )
+                if self.user is not True:
+                    date_query.filter(
+                        Terms(field="dates.nodegroup_id", terms=permitted_nodegroups)
+                    )
 
                 if include_provisional is False:
                     date_query.filter(Terms(field="dates.provisional", terms=["false"]))
@@ -80,11 +81,12 @@ class TimeFilter(BaseSearchFilter):
                 else:
                     date_ranges_query = Bool()
                     date_ranges_query.filter(inverted_date_ranges_query)
-                    date_ranges_query.filter(
-                        Terms(
-                            field="date_ranges.nodegroup_id", terms=permitted_nodegroups
+                    if self.user is not True:
+                        date_ranges_query.filter(
+                            Terms(
+                                field="date_ranges.nodegroup_id", terms=permitted_nodegroups
+                            )
                         )
-                    )
 
                     if include_provisional is False:
                         date_ranges_query.filter(
@@ -106,9 +108,10 @@ class TimeFilter(BaseSearchFilter):
                 date_query.filter(
                     Range(field="dates.date", gte=start_date.lower, lte=end_date.upper)
                 )
-                date_query.filter(
-                    Terms(field="dates.nodegroup_id", terms=permitted_nodegroups)
-                )
+                if self.user is not True:
+                    date_query.filter(
+                        Terms(field="dates.nodegroup_id", terms=permitted_nodegroups)
+                    )
 
                 if include_provisional is False:
                     date_query.filter(Terms(field="dates.provisional", terms=["false"]))
@@ -162,7 +165,7 @@ class TimeFilter(BaseSearchFilter):
         node_graph_dict = {
             str(node.nodeid): str(node.graph_id)
             for node in date_nodes
-            if self.request.user.has_perm("read_nodegroup", node.nodegroup)
+            if (self.user is True or self.request.user.has_perm("read_nodegroup", node.nodegroup))
         }
 
         date_cardxnodesxwidgets = CardXNodeXWidget.objects.filter(

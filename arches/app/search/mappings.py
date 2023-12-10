@@ -214,6 +214,10 @@ def prepare_search_index(create=False):
                         "provisional": {"type": "boolean"},
                     },
                 },
+                "sets": {
+                    "type": "nested",
+                    "properties": {"id": {"type": "keyword"}},
+                },
                 "domains": {
                     "type": "nested",
                     "properties": {

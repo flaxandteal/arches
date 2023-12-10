@@ -9,14 +9,14 @@ details = {}
 
 
 class BaseSearchFilter:
-    def __init__(self, request=None, user=None, componentname=None):
-        self.request = request
+    def __init__(self, parameters=None, user=None, componentname=None):
+        self.parameters = parameters
         self.user = user
         self.componentname = componentname
 
     def append_dsl(self, search_query_object, **kwargs):
         """
-        used to append ES query dsl to the search request
+        used to append ES query dsl to the search
 
         """
 
@@ -46,8 +46,8 @@ class BaseSearchFilter:
 
 
 class SearchFilterFactory(object):
-    def __init__(self, request=None, user=None):
-        self.request = request
+    def __init__(self, parameters=None, user=None):
+        self.parameters = parameters
         self.user = user
         self.search_filters = {
             search_filter.componentname: search_filter
@@ -71,7 +71,7 @@ class SearchFilterFactory(object):
                 )
                 if class_method:
                     filter_instance = class_method(
-                        self.request, self.user, componentname
+                        self.parameters, self.user, componentname
                     )
                 self.search_filters_instances[search_filter.componentname] = (
                     filter_instance

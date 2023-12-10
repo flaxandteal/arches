@@ -34,7 +34,7 @@ class TermFilter(BaseSearchFilter):
         include_provisional = kwargs.get("include_provisional")
         search_query = Bool()
         querystring_params = kwargs.get("querystring", "[]")
-        language = self.request.GET.get("language", "*")
+        language = self.parameters.get("language", "*")
         for term in JSONDeserializer().deserialize(querystring_params):
             if term["type"] == "term" or term["type"] == "string":
                 string_filter = Bool()
@@ -115,9 +115,10 @@ class TermFilter(BaseSearchFilter):
                         Match(field="strings.provisional", query="false", type="phrase")
                     )
 
-                string_filter.filter(
-                    Terms(field="strings.nodegroup_id", terms=permitted_nodegroups)
-                )
+                if self.user is not True:
+                    string_filter.filter(
+                        Terms(field="strings.nodegroup_id", terms=permitted_nodegroups)
+                    )
                 nested_string_filter = Nested(path="strings", query=string_filter)
                 if term["inverted"]:
                     search_query.must_not(nested_string_filter)
@@ -131,9 +132,10 @@ class TermFilter(BaseSearchFilter):
                 conceptid_filter.filter(
                     Terms(field="domains.conceptid", terms=concept_ids)
                 )
-                conceptid_filter.filter(
-                    Terms(field="domains.nodegroup_id", terms=permitted_nodegroups)
-                )
+                if self.user is not True:
+                    conceptid_filter.filter(
+                        Terms(field="domains.nodegroup_id", terms=permitted_nodegroups)
+                    )
 
                 if include_provisional is False:
                     conceptid_filter.must_not(

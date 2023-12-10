@@ -70,6 +70,10 @@ from arches.app.models.system_settings import settings
 logger = logging.getLogger(__name__)
 
 
+class SearchError(Exception):
+    ...
+
+
 class SearchView(MapBaseManagerView):
     def get(self, request):
         map_markers = MapMarker.objects.all()
@@ -330,15 +334,15 @@ def export_results(request):
         )
 
 
-def append_instance_permission_filter_dsl(request, search_query_object):
-    if request.user.is_superuser is False:
+def append_instance_permission_filter_dsl(user, search_query_object):
+    if user.is_superuser is False:
         query: Query = search_query_object.get("query", None)
         if query:
             inclusions = permission_backend.get_permission_inclusions()
             for inclusion in inclusions:
                 query.include(inclusion)
             query.add_query(
-                permission_backend.get_permission_search_filter(request.user)
+                permission_backend.get_permission_search_filter(user)
             )
 
 
@@ -348,7 +352,11 @@ def get_dsl_from_search_string(request):
 
 
 def search_results(request, returnDsl=False):
-    search_filter_factory = SearchFilterFactory(request)
+    parameters = {}
+    for bag in (request.GET, request.POST):
+        for key in bag:
+            parameters[key] = bag[key]
+    search_filter_factory = SearchFilterFactory(parameters, user)
     searchview_component_instance = search_filter_factory.get_searchview_instance()
     if not searchview_component_instance:
         unavailable_searchview_name = search_filter_factory.get_searchview_name()
@@ -384,7 +392,7 @@ def search_results(request, returnDsl=False):
         )
 
 
-def get_provisional_type(request):
+def get_provisional_type(provisional_filter, user):
     """
     Parses the provisional filter data to determine if a search results will
     include provisional (True) exclude provisional (False) or inlude only
@@ -395,7 +403,7 @@ def get_provisional_type(request):
     provisional_filter = JSONDeserializer().deserialize(
         request.GET.get("provisional-filter", "[]")
     )
-    user_is_reviewer = user_is_resource_reviewer(request.user)
+    user_is_reviewer = user_is_resource_reviewer(user)
     if user_is_reviewer is not False:
         if len(provisional_filter) == 0:
             result = True

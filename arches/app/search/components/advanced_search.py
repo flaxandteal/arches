@@ -39,7 +39,7 @@ class AdvancedSearch(BaseSearchFilter):
             for key, val in advanced_filter.items():
                 if key != "op":
                     node = Node.objects.get(pk=key)
-                    if self.request.user.has_perm("read_nodegroup", node.nodegroup):
+                    if self.user.has_perm("read_nodegroup", node.nodegroup):
                         datatype = datatype_factory.get_instance(node.datatype)
                         try:
                             val["val"] = "" if val["val"] == None else val["val"]
@@ -55,11 +55,11 @@ class AdvancedSearch(BaseSearchFilter):
                         ):
                             # don't use a nested query with the null/not null search
                             datatype.append_search_filters(
-                                val, node, null_query, self.request
+                                val, node, null_query, self.parameters
                             )
                         else:
                             datatype.append_search_filters(
-                                val, node, tile_query, self.request
+                                val, node, tile_query, self.parameters
                             )
             nested_query = Nested(path="tiles", query=tile_query)
             if advanced_filter["op"] == "or" and index != 0:
@@ -98,7 +98,7 @@ class AdvancedSearch(BaseSearchFilter):
         # only allow cards that the user has permission to read
         searchable_cards = []
         for card in resource_cards:
-            if self.request.user.has_perm("read_nodegroup", card.nodegroup):
+            if self.user.has_perm("read_nodegroup", card.nodegroup):
                 searchable_cards.append(card)
 
         ret["graphs"] = resource_graphs

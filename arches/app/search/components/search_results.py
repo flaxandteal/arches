@@ -12,7 +12,7 @@ from arches.app.search.elasticsearch_dsl_builder import (
 )
 from arches.app.search.components.base import BaseSearchFilter
 from arches.app.search.components.resource_type_filter import get_permitted_graphids
-from arches.app.utils.permission_backend import user_is_resource_reviewer
+from arches.app.utils.permission_backend import user_is_resource_reviewer, get_sets_for_user
 from arches.app.utils import permission_backend
 from django.utils.translation import get_language, gettext as _
 
@@ -77,6 +77,13 @@ class SearchResultsFilter(BaseSearchFilter):
             GeoBoundsAgg(field="points.point", name="bounds")
         )
         nested_agg.add_aggregation(nested_agg_filter)
+
+        # TODO: It would be preferable to inject this, but would require more changes elsewhere.
+        sets = get_sets_for_user(self.user, "view_resourceinstance")
+        if sets is not None: # Only None if no filtering should be done, but may be an empty set.
+            search_query = Bool()
+            search_query.must(Nested(path="sets", query=Terms(field="sets.id", terms=list(sets))))
+            search_query_object["query"].add_query(search_query)
 
         if self.user and self.user.id:
             search_query = Bool()

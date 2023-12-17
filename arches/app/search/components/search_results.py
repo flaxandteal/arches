@@ -3,7 +3,7 @@ from arches.app.models.system_settings import settings
 from arches.app.search.elasticsearch_dsl_builder import Bool, Terms, NestedAgg, FiltersAgg, GeoHashGridAgg, GeoBoundsAgg, Nested
 from arches.app.search.components.base import BaseSearchFilter
 from arches.app.search.components.resource_type_filter import get_permitted_graphids
-from arches.app.utils.permission_backend import user_is_resource_reviewer
+from arches.app.utils.permission_backend import user_is_resource_reviewer, get_sets_for_user
 
 details = {
     "searchcomponentid": "",
@@ -54,14 +54,17 @@ class SearchResultsFilter(BaseSearchFilter):
         nested_agg_filter.add_aggregation(GeoBoundsAgg(field="points.point", name="bounds"))
         nested_agg.add_aggregation(nested_agg_filter)
 
-        if self.user and self.user.id:
+        # TODO: It would be preferable to inject this, but would require more changes elsewhere.
+        sets = get_sets_for_user(self.user, "view_resourceinstance")
+        if sets is not None: # Only None if no filtering should be done, but may be an empty set.
             search_query = Bool()
             subsearch_query = Bool()
-            # TODO: call to permissions framework with subsearch_query
-            subsearch_query.should(Nested(path="permissions", query=Terms(field="permissions.principal_user", terms=[int(self.user.id)])))
+            if sets:
+                subsearch_query.should(Nested(path="sets", query=Terms(field="sets.id", terms=list(sets))))
+            if self.user and self.user.id:
+                subsearch_query.should(Nested(path="permissions", query=Terms(field="permissions.principal_user", terms=[int(self.user.id)])))
             search_query.must(subsearch_query)
             search_results_object["query"].add_query(search_query)
-
         search_results_object["query"].add_aggregation(nested_agg)
 
     def post_search_hook(self, search_results_object, results, permitted_nodegroups):

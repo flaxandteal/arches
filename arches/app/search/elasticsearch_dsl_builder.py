@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 """
 ARCHES - a program developed to inventory and manage immovable cultural heritage.
 Copyright (C) 2013 J. Paul Getty Trust and World Monuments Fund
@@ -60,6 +59,7 @@ class UpdateByQuery(Dsl):
             "query": self.query.dsl["query"],
             "script": self.script
         }
+        self.dsl.update(kwargs)
         return self.se.update_by_query(index=index, **self.dsl)
 
 

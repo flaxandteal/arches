@@ -130,6 +130,7 @@ define([
 
         this.updateWorkflowComponentAbstractLookup = function(workflowComponentAbtractData) {
             var workflowComponentAbstractLookup = self.workflowComponentAbstractLookup();
+            var workflowComponentAbstractId = null;
             
             if (config.workflowHistory.stepdata) {
                 const componentIdLookup = config.workflowHistory.stepdata[self.name][COMPONENT_ID_LOOKUP_LABEL];

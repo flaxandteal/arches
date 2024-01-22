@@ -446,10 +446,6 @@ urlpatterns = [
     ),
     re_path(r"^temp_file$", TempFileView.as_view(), name="temp_file"),
     re_path(r"^tile$", TileData.as_view(action="update_tile"), name="tile"),
-<<<<<<< HEAD
-||||||| parent of a9b00bdd09 (show user roles in JS)
-=======
->>>>>>> a9b00bdd09 (show user roles in JS)
     re_path(
         r"^tiles/reorder_tiles$",
         TileData.as_view(action="reorder_tiles"),

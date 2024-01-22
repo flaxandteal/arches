@@ -62,6 +62,8 @@ from arches.app.datatypes.datatypes import DataTypeFactory
 
 logger = logging.getLogger(__name__)
 
+resource_indexed = django.dispatch.Signal()
+
 
 class Resource(models.ResourceInstance):
 
@@ -719,6 +721,7 @@ class Resource(models.ResourceInstance):
         bool_query.must(Terms(field="_id", terms=[resourceinstanceid]))
         query.add_query(bool_query)
         query.include("sets")
+        query.include("permissions.principal_user")
         results = query.search(index=RESOURCES_INDEX)
         if len(results["hits"]["hits"]) < 1:
             raise UnindexedError("This resource is not (yet) indexed")

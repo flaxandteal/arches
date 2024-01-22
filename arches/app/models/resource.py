@@ -51,9 +51,12 @@ from arches.app.utils.permission_backend import (
     get_restricted_users,
     get_restricted_instances,
 )
+import django.dispatch
 from arches.app.datatypes.datatypes import DataTypeFactory
 
 logger = logging.getLogger(__name__)
+
+resource_indexed = django.dispatch.Signal()
 
 
 class Resource(models.ResourceInstance):
@@ -221,16 +224,20 @@ class Resource(models.ResourceInstance):
         index = kwargs.pop("index", True)
         context = kwargs.pop("context", None)
         transaction_id = kwargs.pop("transaction_id", None)
-        super(Resource, self).save(*args, **kwargs)
-        for tile in self.tiles:
-            tile.resourceinstance_id = self.resourceinstanceid
-            tile.save(request=request, index=False, transaction_id=transaction_id, context=context)
+
         if request is None:
             if user is None:
                 user = {}
         else:
             user = request.user
 
+        if not self.principaluser_id and user:
+            self.principaluser_id = user.id
+
+        super(Resource, self).save(*args, **kwargs)
+        for tile in self.tiles:
+            tile.resourceinstance_id = self.resourceinstanceid
+            tile.save(request=request, index=False, transaction_id=transaction_id, context=context)
         try:
             for perm in ("view_resourceinstance", "change_resourceinstance", "delete_resourceinstance"):
                 assign_perm(perm, user, self)
@@ -351,6 +358,7 @@ class Resource(models.ResourceInstance):
                         es_index.index_document(document=doc, id=doc_id)
 
             super(Resource, self).save()
+            resource_indexed.send(sender=self.__class__, instance=self)
 
     def get_documents_to_index(self, fetchTiles=True, datatype_factory=None, node_datatypes=None, context=None):
         """
@@ -420,6 +428,10 @@ class Resource(models.ResourceInstance):
         document["permissions"]["users_without_edit_perm"] = restrictions["cannot_write"]
         document["permissions"]["users_without_delete_perm"] = restrictions["cannot_delete"]
         document["permissions"]["users_with_no_access"] = restrictions["no_access"]
+        if self.principaluser_id:
+            document["permissions"]["principal_user"] = [int(self.principaluser_id)]
+        else:
+            document["permissions"]["principal_user"] = []
         document["strings"] = []
         document["dates"] = []
         document["domains"] = []
@@ -546,6 +558,7 @@ class Resource(models.ResourceInstance):
         bool_query.must(Terms(field="_id", terms=[resourceinstanceid]))
         query.add_query(bool_query)
         query.include("sets")
+        query.include("permissions.principal_user")
         results = query.search(index=RESOURCES_INDEX)
         if len(results["hits"]["hits"]) < 1:
             raise UnindexedError("This resource is not (yet) indexed")

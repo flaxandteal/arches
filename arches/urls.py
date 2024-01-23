@@ -19,6 +19,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 from arches.app.views.language import LanguageView
 from django.views.decorators.cache import cache_page
 from django.contrib.auth import views as auth_views
+from django.contrib.staticfiles import views
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.urls import include, path, re_path
 from arches.app.views import concept, main, map, search, graph, api
@@ -233,6 +234,7 @@ urlpatterns = [
     re_path(r"^feature_popup_content$", main.feature_popup_content, name="feature_popup_content"),
     re_path(r"^user$", UserManagerView.as_view(), name="user_profile_manager"),
     re_path(r"^user/get_user_names$", UserManagerView.as_view(action="get_user_names"), name="get_user_names"),
+    re_path(r"^user/get_user_roles$", UserManagerView.as_view(action="get_user_roles"), name="get_user_roles"),
     re_path(r"^notifications$", NotificationView.as_view(), name="get_notifications"),
     re_path(r"^notifications/dismiss$", NotificationView.as_view(action="dismiss"), name="dismiss_notifications"),
     re_path(r"^notifications/get_types$", NotificationView.as_view(action="get_types"), name="get_notification_types"),
@@ -313,3 +315,7 @@ if settings.DEBUG:
         urlpatterns += [path("silk/", include("silk.urls", namespace="silk"))]
     except:
         pass
+
+    urlpatterns += [
+        re_path(r'^static/(?P<path>.*)$', views.serve)
+    ]

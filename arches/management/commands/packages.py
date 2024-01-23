@@ -1,4 +1,5 @@
 import json
+import re
 import pyprind
 import csv
 import shutil
@@ -82,6 +83,7 @@ class Command(BaseCommand):
                 "load_concept_scheme",
                 "export_business_data",
                 "export_graphs",
+                "list_mapbox_layer",
                 "delete_mapbox_layer",
                 "create_mapping_file",
                 "import_reference_data",
@@ -185,6 +187,7 @@ class Command(BaseCommand):
         )
 
         parser.add_argument("-b", "--is_basemap", action="store_true", dest="is_basemap", help="Add to make the layer a basemap.")
+        parser.add_argument("-S", "--strict", action="store_true", dest="strict", help="Whether all errors should raise exceptions, if possible.")
 
         parser.add_argument("-db", "--setup_db", action="store_true", dest="setup_db", default=False, help="Rebuild database")
         parser.add_argument("-dev", "--dev", action="store_true", dest="dev", help="Loading package for development")
@@ -194,6 +197,15 @@ class Command(BaseCommand):
             "--bulk_load",
             action="store_true",
             dest="bulk_load",
+            help="Bulk load values into the database.  By setting this flag the system will bypass any PreSave \
+            functions attached to the resource, as well as prevent some logging statements from printing to console.",
+        )
+
+        parser.add_argument(
+            "-bd",
+            "--no-business_data",
+            action="store_false",
+            dest="include_business_data",
             help="Bulk load values into the database.  By setting this flag the system will bypass any PreSave \
             functions attached to the resource, as well as prevent some logging statements from printing to console.",
         )
@@ -297,16 +309,21 @@ class Command(BaseCommand):
                 concept_count = models.Value.objects.count()
                 relation_count = models.ResourceXResource.objects.count()
 
-            self.import_business_data(
-                options["source"],
-                options["config_file"],
-                options["overwrite"],
-                options["bulk_load"],
-                options["create_concepts"],
-                use_multiprocessing=options["use_multiprocessing"],
-                force=options["yes"],
-                prevent_indexing=prevent_indexing,
-            )
+            try:
+                self.import_business_data(
+                    options["source"],
+                    options["config_file"],
+                    options["overwrite"],
+                    options["bulk_load"],
+                    options["create_concepts"],
+                    use_multiprocessing=options["use_multiprocessing"],
+                    force=options["yes"],
+                    prevent_indexing=prevent_indexing,
+                )
+            except Exception as exc:
+                import traceback
+                traceback.print_exception()
+                raise
 
             if defer_indexing and not prevent_indexing:
                 # index concepts if new concepts created
@@ -332,11 +349,14 @@ class Command(BaseCommand):
 
         if options["operation"] == "add_mapbox_layer":
             self.add_mapbox_layer(
-                options["layer_name"], options["mapbox_json_path"], options["layer_icon"], options["is_basemap"],
+                options["layer_name"], options["mapbox_json_path"], options["layer_icon"], options["is_basemap"], strict=options["strict"],
             )
 
+        if options["operation"] == "list_mapbox_layer":
+            self.list_mapbox_layer()
+
         if options["operation"] == "delete_mapbox_layer":
-            self.delete_mapbox_layer(options["layer_name"])
+            self.delete_mapbox_layer(options["layer_name"], strict=options["strict"])
 
         if options["operation"] == "create_mapping_file":
             self.create_mapping_file(options["dest_dir"], options["graphs"])
@@ -358,6 +378,7 @@ class Command(BaseCommand):
                 options["yes"],
                 options["dev"],
                 False if str(options["defer_indexing"])[0].lower() == "f" else True,
+                options["include_business_data"]
             )
 
         if options["operation"] in ["create", "create_package"]:
@@ -540,6 +561,7 @@ class Command(BaseCommand):
         yes=False,
         dev=False,
         defer_indexing=True,
+        include_business_data=True,
     ):
 
         celery_worker_running = task_management.check_if_celery_available()
@@ -718,10 +740,21 @@ class Command(BaseCommand):
                     for ext in ["*.json", "*.jsonl", "*.csv"]:
                         business_data += glob.glob(os.path.join(package_dir, "business_data", ext))
 
+            def _path_to_mapping(path):
+                prefix, suffix = os.path.splitext(path)
+                prefix = re.sub(r"_[0-9]+$", "", prefix)
+                if suffix == ".csv":
+                    if os.path.isfile(prefix + ".mapping"):
+                        return prefix + ".mapping"
+                    return False
+
+                return None
+
+
             erring_csvs = [
                 path
                 for path in business_data
-                if os.path.splitext(path)[1] == ".csv" and os.path.isfile(os.path.splitext(path)[0] + ".mapping") is False
+                if _path_to_mapping(path) is False
             ]
             message = (
                 f"The following .csv files will not load because they are missing accompanying .mapping files: \n\t {','.join(erring_csvs)}"
@@ -736,14 +769,14 @@ class Command(BaseCommand):
                     print("Aborting operation: Package Load")
                     sys.exit()
 
-            if celery_worker_running:
+            if celery_worker_running and False:
                 from celery import chord
                 from arches.app.tasks import import_business_data, package_load_complete, on_chord_error
 
                 valid_resource_paths = [
                     path
                     for path in business_data
-                    if (".csv" in path and os.path.exists(path.replace(".csv", ".mapping"))) or (".json" in path)
+                    if (_path_to_mapping(path) is False) or (".json" in path)
                 ]
 
                 # assumes resources in csv do not depend on data being loaded prior from json in same dir
@@ -784,7 +817,7 @@ class Command(BaseCommand):
                     dest_path = os.path.join(template_dir, os.path.basename(templates[0]))
                     if os.path.exists(dest_path) is False:
                         if os.path.exists(template_dir) is False:
-                            os.mkdir(template_dir)
+                            os.makedirs(template_dir)
                         shutil.copy(templates[0], template_dir)
                     else:
                         logger.info("Not loading {0} from package. Extension already exists".format(templates[0]))
@@ -793,7 +826,7 @@ class Command(BaseCommand):
                     dest_path = os.path.join(component_dir, os.path.basename(components[0]))
                     if os.path.exists(dest_path) is False:
                         if os.path.exists(component_dir) is False:
-                            os.mkdir(component_dir)
+                            os.makedirs(component_dir)
                         shutil.copy(components[0], component_dir)
                     else:
                         logger.info("Not loading {0} from package. Extension already exists".format(components[0]))
@@ -950,8 +983,13 @@ class Command(BaseCommand):
         load_map_layers(package_location)
         print("loading search indexes")
         load_indexes(package_location)
-        print("loading business data - resource instances and relationships")
-        load_business_data(package_location, defer_indexing)
+
+        if include_business_data:
+            print("loading business data - resource instances and relationships")
+            load_business_data(package_location, defer_indexing)
+        else:
+            print("skipping business data - resource instances and relationships - as requested")
+
         print("loading resource views")
         load_resource_views(package_location)
         print("loading apps")
@@ -962,7 +1000,7 @@ class Command(BaseCommand):
         if os.path.exists(css_source):
             css_dest = os.path.join(root, "media", "css")
             if not os.path.exists(css_dest):
-                os.mkdir(css_dest)
+                os.makedirs(css_dest)
             css_files = glob.glob(os.path.join(css_source, "*.css"))
             for css_file in css_files:
                 shutil.copy(css_file, css_dest)
@@ -1314,6 +1352,7 @@ class Command(BaseCommand):
         mapbox_json_path=False,
         layer_icon="fa fa-globe",
         is_basemap=False,
+        strict=False
     ):
         if layer_name is not False and mapbox_json_path is not False:
             with open(mapbox_json_path) as data_file:
@@ -1350,13 +1389,21 @@ class Command(BaseCommand):
                         map_layer.save()
                     except IntegrityError as e:
                         print("Cannot save layer: {0} already exists".format(layer_name))
+        elif strict:
+            raise RuntimeError("Require layer name and mapbox JSON path")
 
-    def delete_mapbox_layer(self, layer_name=False):
+    def list_mapbox_layer(self):
+        for mapbox_layer in models.MapLayer.objects.all():
+            print(mapbox_layer.name)
+
+    def delete_mapbox_layer(self, layer_name=False, strict=False):
         if layer_name is not False:
             try:
                 mapbox_layer = models.MapLayer.objects.get(name=layer_name)
             except ObjectDoesNotExist:
                 print('error: no mapbox layer named "{}"'.format(layer_name))
+                if strict:
+                    raise
                 return
             all_sources = [i.get("source") for i in mapbox_layer.layerdefinitions]
             # remove duplicates and None
@@ -1366,6 +1413,8 @@ class Command(BaseCommand):
                     src = models.MapSource.objects.get(name=source)
                     src.delete()
                 mapbox_layer.delete()
+        elif strict:
+            raise RuntimeError("Layer name must be supplied")
 
     def create_mapping_file(self, dest_dir=None, graphs=None):
         if graphs is not False:

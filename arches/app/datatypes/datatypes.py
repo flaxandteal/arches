@@ -188,7 +188,7 @@ class StringDataType(BaseDataType):
                 else:
                     return value[get_language()]["value"]
             except KeyError:
-                # sometimes certain requested language values aren't populated.  Just pass back with implicit None.
+                # sometimes certain parametersed language values aren't populated.  Just pass back with implicit None.
                 pass
 
     def get_search_terms(self, nodevalue, nodeid=None):
@@ -203,7 +203,7 @@ class StringDataType(BaseDataType):
                     pass
         return terms
 
-    def append_null_search_filters(self, value, node, query, request):
+    def append_null_search_filters(self, value, node, query, parameters):
         """
         Appends the search query dsl to search for fields that have not been populated or are empty strings
         """
@@ -228,10 +228,10 @@ class StringDataType(BaseDataType):
             non_blank_string_query = Term(field=f"tiles.data.{str(node.pk)}.{value['lang']}.value.keyword", query="")
             query.should(Nested(path="tiles", query=non_blank_string_query))
 
-    def append_search_filters(self, value, node, query, request):
+    def append_search_filters(self, value, node, query, parameters):
         try:
             if value["op"] == "null" or value["op"] == "not_null":
-                self.append_null_search_filters(value, node, query, request)
+                self.append_null_search_filters(value, node, query, parameters)
             elif value["val"] != "":
                 exact_terms = re.search('"(?P<search_string>.*)"', value["val"])
                 if exact_terms:
@@ -430,10 +430,10 @@ class NumberDataType(BaseDataType):
     def append_to_document(self, document, nodevalue, nodeid, tile, provisional=False):
         document["numbers"].append({"number": nodevalue, "nodegroup_id": tile.nodegroup_id, "provisional": provisional})
 
-    def append_search_filters(self, value, node, query, request):
+    def append_search_filters(self, value, node, query, parameters):
         try:
             if value["op"] == "null" or value["op"] == "not_null":
-                self.append_null_search_filters(value, node, query, request)
+                self.append_null_search_filters(value, node, query, parameters)
             elif value["val"] != "":
                 if value["op"] != "eq":
                     operators = {"gte": None, "lte": None, "lt": None, "gt": None}
@@ -521,11 +521,11 @@ class BooleanDataType(BaseDataType):
     def transform_value_for_tile(self, value, **kwargs):
         return bool(util.strtobool(str(value)))
 
-    def append_search_filters(self, value, node, query, request):
+    def append_search_filters(self, value, node, query, parameters):
         try:
             if value["val"] == "null" or value["val"] == "not_null":
                 value["op"] = value["val"]
-                self.append_null_search_filters(value, node, query, request)
+                self.append_null_search_filters(value, node, query, parameters)
             elif value["val"] != "" and value["val"] is not None:
                 term = True if value["val"] == "t" else False
                 query.must(Term(field="tiles.data.%s" % (str(node.pk)), term=term))
@@ -655,10 +655,10 @@ class DateDataType(BaseDataType):
             {"date": ExtendedDateFormat(nodevalue).lower, "nodegroup_id": tile.nodegroup_id, "nodeid": nodeid, "provisional": provisional}
         )
 
-    def append_search_filters(self, value, node, query, request):
+    def append_search_filters(self, value, node, query, parameters):
         try:
             if value["op"] == "null" or value["op"] == "not_null":
-                self.append_null_search_filters(value, node, query, request)
+                self.append_null_search_filters(value, node, query, parameters)
             elif value["val"] != "" and value["val"] is not None:
                 try:
                     date_value = datetime.strptime(value["val"], "%Y-%m-%d %H:%M:%S%z").astimezone().isoformat()
@@ -781,7 +781,7 @@ class EDTFDataType(BaseDataType):
             add_date_to_doc(document, edtf)
             add_date_to_doc(tile.data[nodeid], edtf)
 
-    def append_search_filters(self, value, node, query, request):
+    def append_search_filters(self, value, node, query, parameters):
         def add_date_to_doc(query, edtf):
             if value["op"] == "eq":
                 if edtf.lower != edtf.upper:
@@ -809,7 +809,7 @@ class EDTFDataType(BaseDataType):
                         raise Exception(_("Invalid date specified."))
 
         if value["op"] == "null" or value["op"] == "not_null":
-            self.append_null_search_filters(value, node, query, request)
+            self.append_null_search_filters(value, node, query, parameters)
         elif value["val"] != "" and value["val"] is not None:
             edtf = ExtendedDateFormat(value["val"])
             if edtf.result_set:
@@ -1570,14 +1570,20 @@ class FileListDataType(BaseDataType):
         if data:
             return self.compile_json(tile, node, file_details=data[str(node.nodeid)])
 
-    def post_tile_save(self, tile, nodeid, request):
-        if request is not None:
+    def post_tile_save(self, tile, nodeid, parameters, user=None):
+        if parameters is not None:
             # this does not get called when saving data from the mobile app
             previously_saved_tile = models.TileModel.objects.filter(pk=tile.tileid)
-            user = request.user
-            if hasattr(request.user, "userprofile") is not True:
-                models.UserProfile.objects.create(user=request.user)
-            user_is_reviewer = user_is_resource_reviewer(request.user)
+            user_is_reviewer = False
+            if user is True:
+                user_is_reviewer = True
+            elif user:
+                if hasattr(parameters.user, "userprofile") is not True:
+                    models.UserProfile.objects.create(user=parameters.user)
+                user_is_reviewer = user_is_resource_reviewer(parameters.user)
+            else:
+                # There must be a user to be able to upload files.
+                return
             current_tile_data = self.get_tile_data(tile)
             if previously_saved_tile.count() == 1:
                 previously_saved_tile_data = self.get_tile_data(previously_saved_tile[0])
@@ -1594,7 +1600,7 @@ class FileListDataType(BaseDataType):
                             except models.File.DoesNotExist:
                                 logger.exception(_("File does not exist"))
 
-            files = request.FILES.getlist("file-list_" + nodeid + "_preloaded", []) + request.FILES.getlist("file-list_" + nodeid, [])
+            files = parameters["FILES"].getlist("file-list_" + nodeid + "_preloaded", []) + parameters["FILES"].getlist("file-list_" + nodeid, [])
             tile_exists = models.TileModel.objects.filter(pk=tile.tileid).exists()
 
             for file_data in files:
@@ -1649,7 +1655,7 @@ class FileListDataType(BaseDataType):
         Accepts a comma delimited string of file paths as 'value' to create a file datatype value
         with corresponding file record in the files table for each path. Only the basename of each path is used, so
         the accuracy of the full path is not important. However the name of each file must match the name of a file in
-        the directory from which Arches will request files. By default, this is the directory in a project as defined
+        the directory from which Arches will parameters files. By default, this is the directory in a project as defined
         in settings.UPLOADED_FILES_DIR.
 
         """
@@ -1696,7 +1702,7 @@ class FileListDataType(BaseDataType):
         return json.loads(json.dumps(tile_data))
 
     def pre_tile_save(self, tile, nodeid):
-        # TODO If possible this method should probably replace 'handle request'
+        # TODO If possible this method should probably replace 'handle parameters'
         if tile.data[nodeid]:
             for file in tile.data[nodeid]:
                 try:
@@ -1960,10 +1966,10 @@ class DomainDataType(BaseDomainDataType):
             ret = value
         return ret
 
-    def append_search_filters(self, value, node, query, request):
+    def append_search_filters(self, value, node, query, parameters):
         try:
             if value["op"] == "null" or value["op"] == "not_null":
-                self.append_null_search_filters(value, node, query, request)
+                self.append_null_search_filters(value, node, query, parameters)
             elif value["val"] != "":
                 search_query = Match(field="tiles.data.%s" % (str(node.pk)), type="phrase", query=value["val"])
                 if "!" in value["op"]:
@@ -2136,10 +2142,10 @@ class DomainListDataType(BaseDomainDataType):
                 new_values.append(val)
         return ",".join(new_values)
 
-    def append_search_filters(self, value, node, query, request):
+    def append_search_filters(self, value, node, query, parameters):
         try:
             if value["op"] == "null" or value["op"] == "not_null":
-                self.append_null_search_filters(value, node, query, request)
+                self.append_null_search_filters(value, node, query, parameters)
             elif value["val"] != "" and value["val"] != []:
                 search_query = Match(field="tiles.data.%s" % (str(node.pk)), type="phrase", query=value["val"])
                 if "!" in value["op"]:
@@ -2235,7 +2241,7 @@ class ResourceInstanceDataType(BaseDataType):
             for relationship in relationships:
                 relationship["resourceXresourceId"] = str(uuid.uuid4())
 
-    def post_tile_save(self, tile, nodeid, request):
+    def post_tile_save(self, tile, nodeid, parameters, user):
         ret = False
         sql = """
             SELECT * FROM __arches_create_resource_x_resource_relationships('%s') as t;
@@ -2303,10 +2309,16 @@ class ResourceInstanceDataType(BaseDataType):
             return json.loads(value)
         except ValueError:
             # do this if json (invalid) is formatted with single quotes, re #6390
-            try:
-                return ast.literal_eval(value)
-            except:
+            if "'" in value:
+                try:
+                    return ast.literal_eval(value)
+                except:
+                    return value
+            elif isinstance(value, str):
+                return [{"resourceId": val} for val in value.split(";")]
+            else:
                 return value
+
         except TypeError:
             # data should come in as json but python list is accepted as well
             if isinstance(value, list):
@@ -2315,10 +2327,10 @@ class ResourceInstanceDataType(BaseDataType):
     def transform_export_values(self, value, *args, **kwargs):
         return json.dumps(value)
 
-    def append_search_filters(self, value, node, query, request):
+    def append_search_filters(self, value, node, query, parameters):
         try:
             if value["op"] == "null" or value["op"] == "not_null":
-                self.append_null_search_filters(value, node, query, request)
+                self.append_null_search_filters(value, node, query, parameters)
             elif value["val"] != "" and value["val"] != []:
                 # search_query = Match(field="tiles.data.%s.resourceId" % (str(node.pk)), type="phrase", query=value["val"])
                 search_query = Terms(field="tiles.data.%s.resourceId.keyword" % (str(node.pk)), terms=value["val"])
@@ -2454,7 +2466,7 @@ class NodeValueDataType(BaseDataType):
     def append_to_document(self, document, nodevalue, nodeid, tile, provisional=False):
         pass
 
-    def append_search_filters(self, value, node, query, request):
+    def append_search_filters(self, value, node, query, parameters):
         pass
 
 

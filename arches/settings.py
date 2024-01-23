@@ -325,9 +325,9 @@ OAUTH_CLIENT_ID = ""  # '9JCibwrWQ4hwuGn5fu2u1oRZSs9V6gK8Vu8hpRC4'
 AUTHENTICATION_BACKENDS = (
     "arches.app.utils.email_auth_backend.EmailAuthenticationBackend",
     "oauth2_provider.backends.OAuth2Backend",
+    #"dauthz.backends.CasbinBackend",
     "django.contrib.auth.backends.ModelBackend",  # this is default
-    "arches.app.utils.permission_backend.PermissionBackend",
-    "guardian.backends.ObjectPermissionBackend",
+    "arches.app.permissions.arches_standard.PermissionBackend",
     "arches.app.utils.external_oauth_backend.ExternalOauthAuthenticationBackend",
 )
 
@@ -350,6 +350,7 @@ INSTALLED_APPS = (
     "oauth2_provider",
     "django_celery_results",
     "compressor",
+    #"dauthz.apps.DauthzConfig"
 )
 
 MIDDLEWARE = [
@@ -365,6 +366,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     # "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    #"dauthz.middlewares.request_middleware.RequestMiddleware",
     "arches.app.utils.middleware.SetAnonymousUser",
 ]
 
@@ -582,6 +584,9 @@ BUSINESS_DATA_FILES = (
     # Don't forget to use absolute paths, not relative paths.
 )
 
+PERMISSION_FRAMEWORK_LOCATIONS = [
+    "arches.app.permissions",
+]
 DATATYPE_LOCATIONS = [
     "arches.app.datatypes",
 ]
@@ -740,6 +745,8 @@ JSON_LD_SORT_FUNCTIONS = [lambda x: x.get("@id", "~")]
 
 def JSON_LD_FIX_DATA_FUNCTION(data, jsdata, model):
     return jsdata
+
+PERMISSION_FRAMEWORK = "arches_standard.ArchesStandardPermissionFramework"
 
 ##########################################
 ### END RUN TIME CONFIGURABLE SETTINGS ###

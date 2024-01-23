@@ -338,6 +338,10 @@ class Tile(models.TileModel):
             except TypeError: # will catch if serialized_graph is None
                 node = models.Node.objects.get(nodeid=nodeid)
             datatype = self.datatype_factory.get_instance(node.datatype)
+            parameters = {}
+            for bag in (request.GET, request.POST):
+                for key in bag:
+                    parameters[key] = bag[key]
             error = datatype.validate(value, node=node, strict=strict, request=request)
             tile_errors += error
             for error_instance in error:
@@ -382,7 +386,11 @@ class Tile(models.TileModel):
             except:
                 node = models.Node.objects.get(nodeid=nodeid)
             datatype = self.datatype_factory.get_instance(node.datatype)
-            datatype.post_tile_save(self, nodeid, request)
+            datatype.post_tile_save(self, nodeid, {
+                "GET": request.GET if request else {},
+                "POST": request.POST if request else {},
+                "FILES": request.FILES if request else {}
+            }, request.user if request else None)
 
     def save(self, *args, **kwargs):
         request = kwargs.pop("request", None)
@@ -402,7 +410,8 @@ class Tile(models.TileModel):
         try:
             if user is None and request is not None:
                 user = request.user
-            user_is_reviewer = user_is_resource_reviewer(user)
+            if user is not None:
+                user_is_reviewer = user_is_resource_reviewer(user)
         except AttributeError:  # no user - probably importing data
             user = None
 
@@ -506,7 +515,10 @@ class Tile(models.TileModel):
             tile.delete(*args, request=request, **kwargs)
         try:
             user = request.user
-            user_is_reviewer = user_is_resource_reviewer(user)
+            if user is not None:
+                user_is_reviewer = user_is_resource_reviewer(user)
+            else:
+                user_is_reviewer = True
         except AttributeError:  # no user
             user = None
             user_is_reviewer = True

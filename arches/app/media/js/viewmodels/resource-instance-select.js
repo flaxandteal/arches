@@ -310,6 +310,12 @@ define([
             return ko.unwrap(self.waitingForGraphToDownload) || ko.unwrap(params.disabled) || !!ko.unwrap(params.form?.locked);
         });
 
+        this.disabled.subscribe((disabled) => {
+            if (self.select2ele) {
+                self.select2ele.prop("disabled", disabled);
+            }
+        });
+
         // this is a hack to get the dropdown to clear properly
         // for some reason setting self.resourceToAdd("") didn't work
         self.select2ele = null;
@@ -507,6 +513,8 @@ define([
             },
             initSelection: function(ele, callback) {
                 self.select2ele = ele;
+                self.select2ele.prop("disabled", self.disabled());
+                
                 if(!self.displayOntologyTable && !!self.value() && !self.graphIds().includes(self.value())) {
                     var values = self.value();
                     if(!Array.isArray(self.value())){

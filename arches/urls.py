@@ -446,6 +446,10 @@ urlpatterns = [
     ),
     re_path(r"^temp_file$", TempFileView.as_view(), name="temp_file"),
     re_path(r"^tile$", TileData.as_view(action="update_tile"), name="tile"),
+<<<<<<< HEAD
+||||||| parent of a9b00bdd09 (show user roles in JS)
+=======
+>>>>>>> a9b00bdd09 (show user roles in JS)
     re_path(
         r"^tiles/reorder_tiles$",
         TileData.as_view(action="reorder_tiles"),
@@ -487,6 +491,11 @@ urlpatterns = [
         r"^user/get_user_names$",
         UserManagerView.as_view(action="get_user_names"),
         name="get_user_names",
+    ),
+    re_path(
+        r"^user/get_user_roles$",
+        UserManagerView.as_view(action="get_user_roles"),
+        name="get_user_roles",
     ),
     re_path(r"^notifications$", NotificationView.as_view(), name="get_notifications"),
     re_path(

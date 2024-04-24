@@ -90,6 +90,7 @@ class Command(BaseCommand):
                 "load_concept_scheme",
                 "export_business_data",
                 "export_graphs",
+                "list_mapbox_layer",
                 "delete_mapbox_layer",
                 "create_mapping_file",
                 "import_reference_data",
@@ -444,6 +445,9 @@ class Command(BaseCommand):
                 options["is_basemap"],
                 strict=options["strict"],
             )
+
+        if options["operation"] == "list_mapbox_layer":
+            self.list_mapbox_layer()
 
         if options["operation"] == "delete_mapbox_layer":
             self.delete_mapbox_layer(options["layer_name"], strict=options["strict"])

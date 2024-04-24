@@ -50,9 +50,34 @@ var UserProfileManager = BaseManagerView.extend({
                     koType = ko.mapping.fromJS(type);
                     self.viewModel.notifTypeObservables.push(koType);
                 });
-            });
+            };
         };
         self.viewModel.getNotifTypes();
+
+        self.viewModel.getRoles = function() {
+            self.viewModel.roleObservables.removeAll();
+            $.ajax({
+                url: arches.urls.get_user_roles,
+                context: this,
+                data: { userids: [] },
+                method: 'POST',
+                dataType: 'json'
+            }).done(function(data) {
+                var koType;
+                var user = Object.keys(data);
+                if (user.length == 1) {
+                    const userId = user[0];
+                    Object.values(data[userId]).forEach(function(role) {
+                        if (!role.name || role.name === "") {
+                            role.name = "(direct)";
+                        }
+                        koRole = ko.mapping.fromJS(role);
+                        self.viewModel.roleObservables.push(koRole);
+                    });
+                }
+            });
+        };
+        self.viewModel.getRoles();
 
         self.viewModel.getRoles = function() {
             self.viewModel.roleObservables.removeAll();

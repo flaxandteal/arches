@@ -392,6 +392,8 @@ def search_results(request, returnDsl=False):
             status=500,
         )
 
+    return search_results_object, count, results
+
 
 def get_provisional_type(provisional_filter, user):
     """

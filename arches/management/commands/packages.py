@@ -74,7 +74,7 @@ class Command(BaseCommand):
             "--operation",
             action="store",
             dest="operation",
-            default="setup",
+            default="",
             choices=[
                 "setup",
                 "install",
@@ -259,6 +259,10 @@ class Command(BaseCommand):
         package_name = settings.PACKAGE_NAME
         celery_worker_running = task_management.check_if_celery_available()
 
+        if options["operation"] == "":
+            print('Provide an operation to run...')
+            return
+ 
         if options["operation"] == "setup":
             self.setup(package_name, es_install_location=options["dest_dir"])
 

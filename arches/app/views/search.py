@@ -391,7 +391,6 @@ def search_results(request, returnDsl=False):
             message,
             status=500,
         )
-
     return search_results_object, count, results
 
 
@@ -427,7 +426,8 @@ def get_provisional_type(provisional_filter, user):
 
 
 def get_permitted_nodegroups(user):
-    return get_nodegroups_by_perm(user, "models.read_nodegroup")
+    # Until we can properly separate read/write
+    return get_nodegroups_by_perm(user, "models.write_nodegroup")
 
 
 def buffer(request):

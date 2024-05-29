@@ -1283,7 +1283,7 @@ class FileListDataType(BaseDataType):
             if user is True:
                 user_is_reviewer = True
             elif user:
-                user_is_reviewer = user_is_resource_reviewer(parameters.user)
+                user_is_reviewer = user_is_resource_reviewer(user)
             else:
                 # There must be a user to be able to upload files.
                 return

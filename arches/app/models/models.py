@@ -1545,11 +1545,17 @@ def create_permissions_for_new_users(sender, instance, created, **kwargs):
         process_new_user(instance, created)
 
 @receiver(m2m_changed, sender=User.groups.through)
-def update_groups_for_user(sender, instance, action, **kwargs):
+def update_groups_for_user(sender, instance, action, pk_set, **kwargs):
     from arches.app.utils.permission_backend import update_groups_for_user
 
     if action in ("post_add", "post_remove"):
-        update_groups_for_user(instance)
+        # instance can be User/Group depending.
+        if isinstance(instance, Group):
+            instances = {User.objects.get(pk=pk) for pk in pk_set}
+        else:
+            instances = {instance}
+        for user in instances:
+            update_groups_for_user(user)
 
 @receiver(m2m_changed, sender=User.user_permissions.through)
 def update_permissions_for_user(sender, instance, action, **kwargs):

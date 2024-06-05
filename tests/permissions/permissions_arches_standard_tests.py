@@ -35,6 +35,12 @@ from arches.app.permissions.arches_standard import ArchesStandardPermissionFrame
 class ArchesStandardPermissionTests(ArchesPermissionFrameworkTestCase):
     FRAMEWORK = ArchesStandardPermissionFramework
 
+    def setUp(self):
+        super().setUp()
+        resource = Resource.objects.get(pk=self.resource_instance_id)
+        resource.graph_id = self.data_type_graphid
+        resource.remove_resource_instance_permissions()
+
     def test_user_cannot_view_without_permission(self):
         """
         Tests if a user is allowed to view a resource with implicit permissions and explicit permissions, but

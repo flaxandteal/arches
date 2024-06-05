@@ -29,6 +29,12 @@ from arches.app.permissions.arches_default_deny import (
 class ArchesDefaultDenyPermissionTests(ArchesPermissionFrameworkTestCase):
     FRAMEWORK = ArchesDefaultDenyPermissionFramework
 
+    def setUp(self):
+        super().setUp()
+        resource = Resource.objects.get(pk=self.resource_instance_id)
+        resource.graph_id = self.data_type_graphid
+        resource.remove_resource_instance_permissions()
+
     def test_default_permissions(self):
         default_permissions = MagicMock()
         default_permissions.PERMISSION_DEFAULTS = {

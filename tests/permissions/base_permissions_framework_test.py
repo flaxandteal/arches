@@ -38,9 +38,6 @@ class ArchesPermissionFrameworkTestCase(ArchesTestCase):
         self.user = User.objects.get(username="ben")
         self.group = Group.objects.get(pk=2)
         self.framework = self.FRAMEWORK()
-        resource = Resource.objects.get(pk=self.resource_instance_id)
-        resource.graph_id = self.data_type_graphid
-        resource.remove_resource_instance_permissions()
 
     def tearDown(self):
         ResourceInstance.objects.filter(graph_id=self.data_type_graphid).delete()

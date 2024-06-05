@@ -34,6 +34,12 @@ from arches.app.permissions.arches_default_deny import ArchesDefaultDenyPermissi
 class ArchesDefaultDenyPermissionTests(ArchesPermissionFrameworkTestCase):
     FRAMEWORK = ArchesDefaultDenyPermissionFramework
 
+    def setUp(self):
+        super().setUp()
+        resource = Resource.objects.get(pk=self.resource_instance_id)
+        resource.graph_id = self.data_type_graphid
+        resource.remove_resource_instance_permissions()
+
     def test_user_cannot_view_without_permission(self):
         """
         Tests if a user is _not_ allowed to view a resource with implicit permissions but is with explicit permissions, provided

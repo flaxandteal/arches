@@ -25,6 +25,7 @@ from arches.app.models.resource import Resource
 
 
 class ArchesPermissionFrameworkTestCase(ArchesTestCase):
+<<<<<<< HEAD
     graph_fixtures = ["Data_Type_Model"]
     data_type_graphid = "330802c5-95bd-11e8-b7ac-acde48001122"
     resource_instance_id = "f562c2fa-48d3-4798-a723-10209806c068"
@@ -38,6 +39,3 @@ class ArchesPermissionFrameworkTestCase(ArchesTestCase):
         cls.group = Group.objects.get(pk=2)
         cls.legacy_load_testing_package()
         cls.framework = cls.FRAMEWORK()
-        resource = Resource.objects.get(pk=cls.resource_instance_id)
-        resource.graph_id = cls.data_type_graphid
-        resource.remove_resource_instance_permissions()

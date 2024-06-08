@@ -40,8 +40,7 @@ from arches.app.tasks import index_resource
 from arches.app.utils import import_class_from_string, task_management
 from arches.app.utils.label_based_graph import LabelBasedGraph
 from arches.app.utils.label_based_graph_v2 import LabelBasedGraph as LabelBasedGraphV2
-from guardian.shortcuts import assign_perm, remove_perm
-from guardian.exceptions import NotUserNorGroup
+from arches.app.utils.permission_backend import assign_perm, remove_perm, NotUserNorGroup
 from arches.app.utils.betterJSONSerializer import JSONSerializer, JSONDeserializer
 from arches.app.utils.exceptions import (
     InvalidNodeNameException,
@@ -257,7 +256,7 @@ class Resource(models.ResourceInstance):
         self.tiles = list(models.TileModel.objects.filter(resourceinstance=self))
         if user:
             readable_nodegroups = get_nodegroups_by_perm(user, perm, any_perm=True)
-            self.tiles = [tile for tile in self.tiles if tile.nodegroup is not None and tile.nodegroup in readable_nodegroups]
+            self.tiles = [tile for tile in self.tiles if tile.nodegroup is not None and tile.nodegroup_id in readable_nodegroups]
 
     # # flatten out the nested tiles into a single array
     def get_flattened_tiles(self):

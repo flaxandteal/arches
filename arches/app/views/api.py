@@ -542,12 +542,19 @@ class Resources(APIBase):
 
             elif format == "json-ld":
                 try:
-                    models.ResourceInstance.objects.get(pk=resourceid)  # check for existance
+                    resource = models.ResourceInstance.objects.select_related("graph").get(pk=resourceid)
+                    if not resource.graph.ontology_id:
+                        return JSONErrorResponse(
+                            message=_(
+                                "The graph '{0}' does not have an ontology. JSON-LD requires one."
+                            ).format(resource.graph.name),
+                            status=400,
+                        )
                     exporter = ResourceExporter(format=format)
                     output = exporter.writer.write_resources(resourceinstanceids=[resourceid], indent=indent, user=request.user)
                     out = output[0]["outputfile"].getvalue()
                 except models.ResourceInstance.DoesNotExist:
-                    logger.error(_("The specified resource '{0}' does not exist. JSON-LD export failed.".format(resourceid)))
+                    logger.error(_("The specified resource '{0}' does not exist. JSON-LD export failed.").format(resourceid))
                     return JSONResponse(status=404)
 
         else:
@@ -1044,7 +1051,7 @@ class IIIFAnnotations(APIBase):
         canvas = request.GET.get("canvas", None)
         resourceid = request.GET.get("resourceid", None)
         nodeid = request.GET.get("nodeid", None)
-        permitted_nodegroups = [nodegroup for nodegroup in get_nodegroups_by_perm(request.user, "models.read_nodegroup")]
+        permitted_nodegroups = get_nodegroups_by_perm(request.user, "models.read_nodegroup")
         annotations = models.VwAnnotation.objects.filter(nodegroup__in=permitted_nodegroups)
         if canvas is not None:
             annotations = annotations.filter(canvas=canvas)
@@ -1079,7 +1086,7 @@ class IIIFAnnotations(APIBase):
 
 class IIIFAnnotationNodes(APIBase):
     def get(self, request, indent=None):
-        permitted_nodegroups = [nodegroup for nodegroup in get_nodegroups_by_perm(request.user, "models.read_nodegroup")]
+        permitted_nodegroups = get_nodegroups_by_perm(request.user, "models.read_nodegroup")
         annotation_nodes = models.Node.objects.filter(nodegroup__in=permitted_nodegroups, datatype="annotation")
         return JSONResponse(
             [
@@ -1366,7 +1373,7 @@ class Tile(APIBase):
             return JSONResponse(str(e), status=404)
 
         # filter tiles from attribute query based on user permissions
-        permitted_nodegroups = [str(nodegroup.pk) for nodegroup in get_nodegroups_by_perm(request.user, "models.read_nodegroup")]
+        permitted_nodegroups = get_nodegroups_by_perm(request.user, "models.read_nodegroup")
         if str(tile.nodegroup_id) in permitted_nodegroups:
             return JSONResponse(tile, status=200)
         else:
@@ -1397,7 +1404,7 @@ class NodeGroup(APIBase):
 
         try:
             nodegroup = models.NodeGroup.objects.get(pk=params["nodegroupid"])
-            permitted_nodegroups = [nodegroup.pk for nodegroup in get_nodegroups_by_perm(user, perms)]
+            permitted_nodegroups = get_nodegroups_by_perm(user, perms)
         except Exception as e:
             return JSONResponse(str(e), status=404)
 
@@ -1445,7 +1452,7 @@ class Node(APIBase):
         # try to get nodes by attribute filter and then get nodes by passed in user perms
         try:
             nodes = models.Node.objects.filter(**dict(params)).values()
-            permitted_nodegroups = [str(nodegroup.pk) for nodegroup in get_nodegroups_by_perm(user, perms)]
+            permitted_nodegroups = get_nodegroups_by_perm(user, perms)
         except Exception as e:
             return JSONResponse(str(e), status=404)
 

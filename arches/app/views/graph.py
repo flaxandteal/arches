@@ -45,7 +45,7 @@ from arches.app.utils.data_management.resource_graphs.exporter import get_graphs
 from arches.app.utils.data_management.resource_graphs import importer as GraphImporter
 from arches.app.utils.system_metadata import system_metadata
 from arches.app.views.base import BaseManagerView
-from guardian.shortcuts import assign_perm, get_perms, remove_perm, get_group_perms, get_user_perms
+from arches.app.utils.permission_backend import assign_perm, get_perms, remove_perm, get_group_perms, get_user_perms
 from io import BytesIO
 from elasticsearch.exceptions import RequestError
 from django.core.cache import cache
@@ -189,7 +189,7 @@ class GraphDesignerView(GraphBaseView):
     def get(self, request, graphid):
         
         if graphid == settings.SYSTEM_SETTINGS_RESOURCE_MODEL_ID:
-            if not request.user.groups.filter(name="System Administrator").exists():
+            if not group_required("System Administrator", raise_exception=True):
                 raise PermissionDenied
 
         self.graph = Graph.objects.get(graphid=graphid)
@@ -422,13 +422,20 @@ class GraphDataView(View):
                     clone_data = graph.copy(root=data)
                     clone_data["copy"].slug = None
                     clone_data["copy"].save()
+
                     ret = {"success": True, "graphid": clone_data["copy"].pk}
 
                 elif self.action == "clone_graph":
                     clone_data = graph.copy()
                     ret = clone_data["copy"]
                     ret.slug = None
+                    ret.publication = None
+
                     ret.save()
+
+                    if bool(graph.publication_id):
+                        ret.publish(user=request.user)
+
                     ret.copy_functions(graph, [clone_data["nodes"], clone_data["nodegroups"]])
 
                 elif self.action == "reorder_nodes":
@@ -469,12 +476,13 @@ class GraphDataView(View):
         elif self.action == "delete_instances":
             try:
                 graph = Graph.objects.get(graphid=graphid)
-                graph.delete_instances()
+                resp = graph.delete_instances(userid=request.user.id)
+                success = resp["success"]
                 return JSONResponse(
                     {
-                        "success": True,
-                        "message": "All the resources associated with the Model '{0}' have been successfully deleted.".format(graph.name),
-                        "title": "Resources Successfully Deleted.",
+                        "success": resp["success"],
+                        "message": resp["message"],
+                        "title": f"Resources {'Successfully' if success else 'Unsuccessfully'} Deleted from {graph.name}.",
                     }
                 )
             except GraphValidationError as e:
@@ -485,7 +493,7 @@ class GraphDataView(View):
             try:
                 graph = Graph.objects.get(graphid=graphid)
                 if graph.isresource:
-                    graph.delete_instances()
+                    graph.delete_instances(userid=request.user.id)
                 graph.delete()
                 return JSONResponse({"success": True})
             except GraphValidationError as e:

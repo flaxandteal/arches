@@ -34,7 +34,7 @@ class AdvancedSearch(BaseSearchFilter):
             for key, val in advanced_filter.items():
                 if key != "op":
                     node = models.Node.objects.get(pk=key)
-                    if self.user.has_perm("read_nodegroup", node.nodegroup):
+                    if self.user is True or self.user.has_perm("read_nodegroup", node.nodegroup):
                         datatype = datatype_factory.get_instance(node.datatype)
                         try:
                             val["val"] = "" if val["val"] == None else val["val"]
@@ -83,7 +83,7 @@ class AdvancedSearch(BaseSearchFilter):
         # only allow cards that the user has permission to read
         searchable_cards = []
         for card in resource_cards:
-            if self.user.has_perm("read_nodegroup", card.nodegroup):
+            if self.user is True or self.user.has_perm("read_nodegroup", card.nodegroup):
                 searchable_cards.append(card)
 
         ret["graphs"] = resource_graphs

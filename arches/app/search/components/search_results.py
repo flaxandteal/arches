@@ -160,7 +160,7 @@ class SearchResultsFilter(BaseSearchFilter):
 def get_nodegroups_by_datatype_and_perm(user, datatype, permission):
     nodes = []
     for node in Node.objects.filter(datatype=datatype):
-        if user.has_perm(permission, node.nodegroup):
+        if user is True or user.has_perm(permission, node.nodegroup):
             nodes.append(str(node.nodegroup_id))
     return nodes
 

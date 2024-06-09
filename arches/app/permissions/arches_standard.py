@@ -483,12 +483,9 @@ class ArchesStandardPermissionFramework(PermissionFramework):
 
         """
 
-        print("GEDRT")
         if self.user_is_resource_editor(user):
-            print("GEDRT0", self.get_resource_types_by_perm(user, ["models.write_nodegroup", "models.delete_nodegroup"]))
             return self.get_resource_types_by_perm(user, ["models.write_nodegroup", "models.delete_nodegroup"])
         else:
-            print("GEDRT1")
             return []
 
 

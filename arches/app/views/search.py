@@ -390,7 +390,7 @@ def build_search(for_export, pages, total, resourceinstanceid, load_tiles, user,
             append_instance_permission_filter_dsl(user, search_results_object)
     except Exception as err:
         logger.exception(err)
-        return JSONErrorResponse(message=str(err))
+        raise SearchError(str(err))
 
     dsl = search_results_object.pop("query", None)
 

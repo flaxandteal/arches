@@ -456,7 +456,7 @@ class Resource(models.ResourceInstance):
                     for index, term in enumerate(node_terms):
                         terms.append(
                             {
-                                "_id": str(nodeid) + str(tile.tileid) + str(index) + term.lang if hasattr(term, "lang") else "",
+                                "_id": str(nodeid) + str(tile.tileid) + str(index) + (term.lang if hasattr(term, "lang") else ""),
                                 "_source": {
                                     "value": term.value if hasattr(term, "value") else term,
                                     "nodeid": nodeid,

@@ -615,7 +615,7 @@ class Resource(models.ResourceInstance):
                                 "_id": str(nodeid)
                                 + str(tile.tileid)
                                 + str(index)
-                                + term.lang if hasattr(term, "lang") else "",
+                                + (term.lang if hasattr(term, "lang") else ""),
                                 "_source": {
                                     "value": term.value if hasattr(term, "value") else term,
                                     "nodeid": nodeid,

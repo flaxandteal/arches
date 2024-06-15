@@ -447,7 +447,7 @@ class Resource(models.ResourceInstance):
 
         for tile in document["tiles"]:
             for nodeid, nodevalue in tile.data.items():
-                if nodevalue != "" and nodevalue != [] and nodevalue != {} and nodevalue is not None:
+                if nodevalue != "" and nodevalue != [] and nodevalue != {} and nodevalue is not None and nodeid in node_datatypes:
                     datatype = node_datatypes[nodeid]
                     datatype_instance = datatype_factory.get_instance(datatype)
                     datatype_instance.append_to_document(document, nodevalue, nodeid, tile)

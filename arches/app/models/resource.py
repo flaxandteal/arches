@@ -554,6 +554,7 @@ class Resource(models.ResourceInstance):
                     and nodevalue != []
                     and nodevalue != {}
                     and nodevalue is not None
+                    and nodeid in node_datatypes
                 ):
                     datatype = node_datatypes[nodeid]
                     datatype_instance = datatype_factory.get_instance(datatype)

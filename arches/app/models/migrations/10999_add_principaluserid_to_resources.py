@@ -8,7 +8,7 @@ from django.db.models import deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("models", "9604_relational_data_model_handle_user_accounts"),
+        ("models", "9979_update_stage_for_bulk_edit"),
     ]
 
     operations = [

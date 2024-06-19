@@ -427,7 +427,7 @@ def retrieve_search_results(search_filter_factory, search_results_object, dsl, l
     else:
         results = dsl.search(index=RESOURCES_INDEX, id=resourceinstanceid)
 
-    ret = {}
+    count = 0
     if results is not None:
         if "hits" not in results:
             if "docs" in results:
@@ -462,22 +462,12 @@ def retrieve_search_results(search_filter_factory, search_results_object, dsl, l
                         resource["_source"]["displayname_language"] = descriptor["language"]
                 else:
                     resource["_source"][descriptor_type] = _("Undefined")
+        count = dsl.count(index=RESOURCES_INDEX)
 
-        ret["results"] = results
+    return search_results_object, count, results
 
         for key, value in list(search_results_object.items()):
             ret[key] = value
-
-        ret["reviewer"] = user_is_resource_reviewer(user)
-        ret["timestamp"] = datetime.now()
-        ret["total_results"] = dsl.count(index=RESOURCES_INDEX)
-        ret["userid"] = user.id
-        return JSONResponse(ret)
-
-    else:
-        ret = {"message": _("There was an error retrieving the search results")}
-        return JSONResponse(ret, status=500)
-
 
 def get_provisional_type(provisional_filter, user):
     """

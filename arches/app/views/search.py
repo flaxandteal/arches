@@ -336,6 +336,7 @@ def search_results(request, returnDsl=False):
     dsl.include("root_ontology_class")
     dsl.include("resourceinstanceid")
     dsl.include("points")
+    dsl.include("permissions.principal_user")
     dsl.include("permissions.users_without_read_perm")
     dsl.include("permissions.users_without_edit_perm")
     dsl.include("permissions.users_without_delete_perm")

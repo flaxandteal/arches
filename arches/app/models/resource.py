@@ -384,6 +384,7 @@ class Resource(models.ResourceInstance):
 
         document["displayname"] = []
         document["displaydescription"] = []
+        document["sets"] = []
         document["map_popup"] = []
         for lang in settings.LANGUAGES:
             if context is None:

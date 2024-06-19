@@ -410,6 +410,7 @@ def retrieve_search_results(search_filter_factory, search_results_object, dsl, l
     dsl.include("displaydescription")
     dsl.include("map_popup")
     dsl.include("provisional_resource")
+    dsl.include("sets")
     if load_tiles:
         dsl.include("tiles")
     if for_export or pages:

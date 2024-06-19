@@ -56,7 +56,8 @@ class TermFilter(BaseSearchFilter):
                 elif include_provisional == "only provisional":
                     string_filter.must_not(Match(field="strings.provisional", query="false", type="phrase"))
 
-                string_filter.filter(Terms(field="strings.nodegroup_id", terms=permitted_nodegroups))
+                if self.user is not True:
+                    string_filter.filter(Terms(field="strings.nodegroup_id", terms=permitted_nodegroups))
                 nested_string_filter = Nested(path="strings", query=string_filter)
                 if term["inverted"]:
                     search_query.must_not(nested_string_filter)
@@ -68,7 +69,8 @@ class TermFilter(BaseSearchFilter):
                 concept_ids = _get_child_concepts(term["value"])
                 conceptid_filter = Bool()
                 conceptid_filter.filter(Terms(field="domains.conceptid", terms=concept_ids))
-                conceptid_filter.filter(Terms(field="domains.nodegroup_id", terms=permitted_nodegroups))
+                if self.user is not True:
+                    conceptid_filter.filter(Terms(field="domains.nodegroup_id", terms=permitted_nodegroups))
 
                 if include_provisional is False:
                     conceptid_filter.must_not(Match(field="domains.provisional", query="true", type="phrase"))

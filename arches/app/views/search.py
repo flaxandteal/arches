@@ -323,7 +323,10 @@ def search_results(request, returnDsl=False):
     for bag in (request.GET, request.POST):
         for key in bag:
             parameters[key] = bag[key]
-    permitted_nodegroups = get_permitted_nodegroups(user)
+    if user is not True:
+        permitted_nodegroups = get_permitted_nodegroups(user)
+    else:
+        permitted_nodegroups = True
     try:
         search_filter_factory, search_results_object, dsl =  build_search(
             for_export,
@@ -382,7 +385,8 @@ def build_search(for_export, pages, total, resourceinstanceid, load_tiles, user,
             search_filter = search_filter_factory.get_filter(filter_type)
             if search_filter:
                 search_filter.append_dsl(search_results_object, permitted_nodegroups, include_provisional)
-        append_instance_permission_filter_dsl(user, search_results_object)
+        if user is not True:
+            append_instance_permission_filter_dsl(user, search_results_object)
     except Exception as err:
         logger.exception(err)
         return JSONErrorResponse(message=str(err))

@@ -30,11 +30,12 @@ class SearchResultsFilter(BaseSearchFilter):
                 "graph_id"
             ]  # check if resource_type filter is already applied
         except (KeyError, IndexError):
-            resource_model_filter = Bool()
-            permitted_graphids = get_permitted_graphids(permitted_nodegroups)
-            terms = Terms(field="graph_id", terms=list(permitted_graphids))
-            resource_model_filter.filter(terms)
-            search_results_object["query"].add_query(resource_model_filter)
+            if self.user is not True:
+                resource_model_filter = Bool()
+                permitted_graphids = get_permitted_graphids(permitted_nodegroups)
+                terms = Terms(field="graph_id", terms=list(permitted_graphids))
+                resource_model_filter.filter(terms)
+                search_results_object["query"].add_query(resource_model_filter)
 
         if include_provisional is True:
             geo_agg_filter.filter(Terms(field="points.provisional", terms=["false", "true"]))
@@ -46,7 +47,8 @@ class SearchResultsFilter(BaseSearchFilter):
             elif include_provisional == "only provisional":
                 geo_agg_filter.filter(Terms(field="points.provisional", terms=["true"]))
 
-        geo_agg_filter.filter(Terms(field="points.nodegroup_id", terms=permitted_nodegroups))
+        if self.user is not True:
+            geo_agg_filter.filter(Terms(field="points.nodegroup_id", terms=permitted_nodegroups))
         nested_agg_filter.add_filter(geo_agg_filter)
         nested_agg_filter.add_aggregation(GeoHashGridAgg(field="points.point", name="grid", precision=settings.HEX_BIN_PRECISION))
         nested_agg_filter.add_aggregation(GeoBoundsAgg(field="points.point", name="bounds"))
@@ -74,7 +76,7 @@ class SearchResultsFilter(BaseSearchFilter):
             try:
                 permitted_tiles = []
                 for tile in result["_source"]["tiles"]:
-                    if tile["nodegroup_id"] in permitted_nodegroups:
+                    if tile["nodegroup_id"] in permitted_nodegroups or self.user is True:
                         permitted_tiles.append(tile)
                 result["_source"]["tiles"] = permitted_tiles
             except KeyError:

@@ -229,14 +229,14 @@ class BaseDataType(object):
         """
         return []
 
-    def append_search_filters(self, value, node, query, request):
+    def append_search_filters(self, value, node, query, parameters):
         """
         Allows for modification of an elasticsearch bool query for use in
         advanced search
         """
         pass
 
-    def append_null_search_filters(self, value, node, query, request):
+    def append_null_search_filters(self, value, node, query, parameters):
         """
         Appends the search query dsl to search for fields that have not been populated
         """
@@ -305,7 +305,7 @@ class BaseDataType(object):
         """
         return tile.data[str(nodeid)]
 
-    def post_tile_save(self, tile, nodeid, request):
+    def post_tile_save(self, tile, nodeid, parameters):
         """
         Called after the tile is saved to the database
 

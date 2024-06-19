@@ -22,8 +22,8 @@ details = {
 class TermFilter(BaseSearchFilter):
     def append_dsl(self, search_results_object, permitted_nodegroups, include_provisional):
         search_query = Bool()
-        querysting_params = self.request.GET.get(details["componentname"], "")
-        language = self.request.GET.get("language", "*")
+        querysting_params = self.parameters.get(details["componentname"], "")
+        language = self.parameters.get("language", "*")
         for term in JSONDeserializer().deserialize(querysting_params):
             if term["type"] == "term" or term["type"] == "string":
                 string_filter = Bool()

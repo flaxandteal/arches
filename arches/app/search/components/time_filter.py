@@ -24,7 +24,7 @@ details = {
 class TimeFilter(BaseSearchFilter):
     def append_dsl(self, search_results_object, permitted_nodegroups, include_provisional):
         search_query = Bool()
-        querysting_params = self.request.GET.get(details["componentname"], "")
+        querysting_params = self.parameters.get(details["componentname"], "")
         temporal_filter = JSONDeserializer().deserialize(querysting_params)
         if "fromDate" in temporal_filter and "toDate" in temporal_filter:
             # now = str(datetime.utcnow())
@@ -114,7 +114,7 @@ class TimeFilter(BaseSearchFilter):
             datatype__in=date_datatypes, graph__isresource=True, graph__publication__isnull=False
         ).prefetch_related("nodegroup")
         node_graph_dict = {
-            str(node.nodeid): str(node.graph_id) for node in date_nodes if self.request.user.has_perm("read_nodegroup", node.nodegroup)
+            str(node.nodeid): str(node.graph_id) for node in date_nodes if self.user.has_perm("read_nodegroup", node.nodegroup)
         }
 
         date_cardxnodesxwidgets = models.CardXNodeXWidget.objects.filter(node_id__in=list(node_graph_dict.keys()))

@@ -63,10 +63,10 @@ class SearchResultsFilter(BaseSearchFilter):
         search_results_object["query"].add_aggregation(nested_agg)
 
     def post_search_hook(self, search_results_object, results, permitted_nodegroups):
-        user_is_reviewer = user_is_resource_reviewer(self.request.user)
+        user_is_reviewer = user_is_resource_reviewer(self.user)
 
         # only reuturn points and geometries a user is allowed to view
-        geojson_nodes = get_nodegroups_by_datatype_and_perm(self.request, "geojson-feature-collection", "read_nodegroup")
+        geojson_nodes = get_nodegroups_by_datatype_and_perm(self.user, "geojson-feature-collection", "read_nodegroup")
 
         for result in results["hits"]["hits"]:
             result["_source"]["points"] = select_geoms_for_results(result["_source"]["points"], geojson_nodes, user_is_reviewer)
@@ -81,10 +81,10 @@ class SearchResultsFilter(BaseSearchFilter):
                 pass
 
 
-def get_nodegroups_by_datatype_and_perm(request, datatype, permission):
+def get_nodegroups_by_datatype_and_perm(user, datatype, permission):
     nodes = []
     for node in models.Node.objects.filter(datatype=datatype):
-        if request.user.has_perm(permission, node.nodegroup):
+        if user.has_perm(permission, node.nodegroup):
             nodes.append(str(node.nodegroup_id))
     return nodes
 

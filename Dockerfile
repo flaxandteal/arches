@@ -1,4 +1,4 @@
-FROM ubuntu:18.04 as base 
+FROM ubuntu:22.04 as base
 USER root
 
 ## Setting default environment variables
@@ -30,29 +30,29 @@ RUN set -ex \
         docbook-mathml \
         libgdal-dev \
         libpq-dev \
-        python3.8 \
-        python3.8-dev \
+        python3.10 \
+        python3.10-dev \
         curl \
-        python3.8-distutils \
+        python3.10-distutils \
         libldap2-dev libsasl2-dev ldap-utils \
         dos2unix \
         " \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends $BUILD_DEPS \
     && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
-    && python3.8 get-pip.py
+    && python3.10 get-pip.py
 
-RUN pip3 wheel --no-cache-dir -b /tmp -r ${WHEELS}/requirements.txt  \
-    && pip3 wheel --no-cache-dir -b /tmp -r ${WHEELS}/requirements_dev.txt  \
-    && pip3 wheel --no-cache-dir -b /tmp gunicorn \
-    && pip3 wheel --no-cache-dir -b /tmp django-auth-ldap
+RUN pip3 wheel --no-cache-dir -r ${WHEELS}/requirements.txt  \
+    && pip3 wheel --no-cache-dir -r ${WHEELS}/requirements_dev.txt  \
+    && pip3 wheel --no-cache-dir gunicorn \
+    && pip3 wheel --no-cache-dir django-auth-ldap
 
 # Add Docker-related files
 COPY docker/entrypoint.sh ${WHEELS}/entrypoint.sh
 RUN chmod -R 700 ${WHEELS} &&\
   dos2unix ${WHEELS}/*.sh
 
-FROM base 
+FROM base
 
 # Get the pre-built python wheels from the build environment
 RUN mkdir ${WEB_ROOT}
@@ -70,25 +70,29 @@ RUN set -ex \
         libgdal-dev \
         python3-venv \
         postgresql-client-12 \
-        python3.8 \
-        python3.8-distutils \
-        python3.8-venv \
+        python3.10 \
+        python3.10-distutils \
+        python3.10-venv \
     " \
-    && apt-get install -y --no-install-recommends curl \
-    && curl -sL https://deb.nodesource.com/setup_10.x | bash - \
+    && apt-get update -y \
+    && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && NODE_MAJOR=16 \
+    && (echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" > /etc/apt/sources.list.d/nodesource.list) \
     && curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
     && add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -sc)-pgdg main" \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends $RUN_DEPS \
     && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
-    && python3.8 get-pip.py \
-    && apt-get install -y nodejs \
+    && python3.10 get-pip.py \
+    && apt-get -y install --no-install-recommends nodejs \
     && npm install -g yarn
 
 # Install Yarn components
-COPY ./arches/install/package.json ${ARCHES_ROOT}/arches/install/package.json
-COPY ./arches/install/.yarnrc ${ARCHES_ROOT}/arches/install/.yarnrc
-COPY ./arches/install/yarn.lock ${ARCHES_ROOT}/arches/install/yarn.lock
+COPY ./package.json ${ARCHES_ROOT}/arches/install/package.json
+COPY ./.yarnrc ${ARCHES_ROOT}/arches/install/.yarnrc
+COPY ./yarn.lock ${ARCHES_ROOT}/arches/install/yarn.lock
 WORKDIR ${ARCHES_ROOT}/arches/install
 RUN mkdir -p ${ARCHES_ROOT}/node_modules
 RUN yarn install
@@ -98,12 +102,14 @@ WORKDIR ${WEB_ROOT}
 
 RUN mv ${WHEELS}/entrypoint.sh entrypoint.sh
 
-RUN python3.8 -m venv ENV \
+RUN python3.10 -m venv ENV \
     && . ENV/bin/activate \
+    && pip install wheel setuptools requests \
+    && pip install rjsmin==1.2.0 MarkupSafe==2.0.0 \
     && pip install requests \
     && pip install -f ${WHEELS} django-auth-ldap \
     && pip install -f ${WHEELS} gunicorn \
-    && pip install -r ${WHEELS}/requirements.txt \
+    && pip install --only-binary :all: -r ${WHEELS}/requirements.txt \
                    -f ${WHEELS} \
     && pip install -r ${WHEELS}/requirements_dev.txt \
                    -f ${WHEELS} \

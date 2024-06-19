@@ -20,7 +20,7 @@ import uuid
 from typing import Iterable
 
 from django.core.exceptions import ObjectDoesNotExist
-from arches.app.models.system_settings import settings
+from arches.app.models.system_settings import settings, SystemSettings
 from django.contrib.auth.models import User, Group
 from django.contrib.gis.db.models import Model
 from django.core.cache import caches

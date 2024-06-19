@@ -1,7 +1,7 @@
 from arches.app.utils.betterJSONSerializer import JSONDeserializer
 from arches.app.search.elasticsearch_dsl_builder import Bool, Terms
 from arches.app.search.components.base import BaseSearchFilter
-from arches.app.models.models import Node
+from arches.app.models.models import Node, GraphModel
 from arches.app.utils.permission_backend import get_resource_types_by_perm
 
 details = {
@@ -18,21 +18,24 @@ details = {
 }
 
 
-def get_permitted_graphids(permitted_nodegroups):
-    permitted_graphids = set()
-    for node in Node.objects.filter(nodegroup__in=permitted_nodegroups):
-        permitted_graphids.add(str(node.graph_id))
-    return permitted_graphids
+def get_permitted_graphids(user, permitted_nodegroups):
+    return get_resource_types_by_perm(user, "read_nodegroup")
 
 
 class ResourceTypeFilter(BaseSearchFilter):
     def append_dsl(self, search_results_object, permitted_nodegroups, include_provisional):
         search_query = Bool()
-        querystring_params = self.request.GET.get(details["componentname"], "")
+        querystring_params = self.parameters.get(details["componentname"], "")
         graph_ids = []
-        permitted_graphids = get_permitted_graphids(permitted_nodegroups)
+        resourceTypeFilters = JSONDeserializer().deserialize(querystring_params)
+        if self.user is True:
+            permitted_graphids = [
+                str(resourceTypeFilter["graphid"]) for resourceTypeFilter in resourceTypeFilters
+            ]
+        else:
+            permitted_graphids = get_permitted_graphids(self.user, permitted_nodegroups)
 
-        for resourceTypeFilter in JSONDeserializer().deserialize(querystring_params):
+        for resourceTypeFilter in resourceTypeFilters:
             graphid = str(resourceTypeFilter["graphid"])
             if resourceTypeFilter["inverted"] is True:
                 try:
@@ -53,4 +56,8 @@ class ResourceTypeFilter(BaseSearchFilter):
         search_results_object["query"].add_query(search_query)
 
     def view_data(self):
-        return {"resources": get_resource_types_by_perm(self.request.user, "read_nodegroup")}
+        return {"resources": list(
+            GraphModel.objects.filter(pk__in=get_resource_types_by_perm(self.user, "read_nodegroup"))
+                .order_by("name")
+                .all()
+        )}

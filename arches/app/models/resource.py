@@ -53,9 +53,12 @@ from arches.app.utils.permission_backend import (
     user_can_read_graph,
     get_nodegroups_by_perm,
 )
+import django.dispatch
 from arches.app.datatypes.datatypes import DataTypeFactory
 
 logger = logging.getLogger(__name__)
+
+resource_indexed = django.dispatch.Signal()
 
 
 class Resource(models.ResourceInstance):
@@ -226,18 +229,22 @@ class Resource(models.ResourceInstance):
         index = kwargs.pop("index", True)
         context = kwargs.pop("context", None)
         transaction_id = kwargs.pop("transaction_id", None)
-        super(Resource, self).save(*args, **kwargs)
-        self.save_edit(user=user, edit_type="create", transaction_id=transaction_id)
 
-        for tile in self.tiles:
-            tile.resourceinstance_id = self.resourceinstanceid
-            tile.save(request=request, index=False, resource_creation=True, transaction_id=transaction_id, context=context)
         if request is None:
             if user is None:
                 user = {}
         else:
             user = request.user
 
+        if not self.principaluser_id and user:
+            self.principaluser_id = user.id
+
+        super(Resource, self).save(*args, **kwargs)
+        self.save_edit(user=user, edit_type="create", transaction_id=transaction_id)
+
+        for tile in self.tiles:
+            tile.resourceinstance_id = self.resourceinstanceid
+            tile.save(request=request, index=False, resource_creation=True, transaction_id=transaction_id, context=context)
         try:
             for perm in ("view_resourceinstance", "change_resourceinstance", "delete_resourceinstance"):
                 assign_perm(perm, user, self)
@@ -351,6 +358,8 @@ class Resource(models.ResourceInstance):
                         doc, doc_id = es_index.get_documents_to_index(self, document["tiles"])
                         es_index.index_document(document=doc, id=doc_id)
 
+            resource_indexed.send(sender=self.__class__, instance=self)
+
     def get_documents_to_index(self, fetchTiles=True, datatype_factory=None, node_datatypes=None, context=None):
         """
         Gets all the documents nessesary to index a single resource
@@ -375,6 +384,7 @@ class Resource(models.ResourceInstance):
 
         document["displayname"] = []
         document["displaydescription"] = []
+        document["sets"] = []
         document["map_popup"] = []
         for lang in settings.LANGUAGES:
             if context is None:
@@ -418,6 +428,10 @@ class Resource(models.ResourceInstance):
         document["permissions"]["users_without_edit_perm"] = restrictions["cannot_write"]
         document["permissions"]["users_without_delete_perm"] = restrictions["cannot_delete"]
         document["permissions"]["users_with_no_access"] = restrictions["no_access"]
+        if self.principaluser_id:
+            document["permissions"]["principal_user"] = [int(self.principaluser_id)]
+        else:
+            document["permissions"]["principal_user"] = []
         document["strings"] = []
         document["dates"] = []
         document["domains"] = []
@@ -442,13 +456,13 @@ class Resource(models.ResourceInstance):
                     for index, term in enumerate(node_terms):
                         terms.append(
                             {
-                                "_id": str(nodeid) + str(tile.tileid) + str(index) + term.lang,
+                                "_id": str(nodeid) + str(tile.tileid) + str(index) + term.lang if hasattr(term, "lang") else "",
                                 "_source": {
-                                    "value": term.value,
+                                    "value": term.value if hasattr(term, "value") else term,
                                     "nodeid": nodeid,
                                     "nodegroupid": tile.nodegroup_id,
                                     "tileid": tile.tileid,
-                                    "language": term.lang,
+                                    "language": term.lang if hasattr(term, "lang") else "",
                                     "resourceinstanceid": tile.resourceinstance_id,
                                     "provisional": False,
                                 },
@@ -526,6 +540,32 @@ class Resource(models.ResourceInstance):
             super(Resource, self).delete()
 
         return permit_deletion
+
+    def get_index(self, resourceinstanceid=None):
+        """
+        Gets the indexed document for a resource
+
+        Keyword Arguments:
+        resourceinstanceid -- the resource instance id to delete from related indexes, if supplied will use this over self.resourceinstanceid
+        """
+
+        if resourceinstanceid is None:
+            resourceinstanceid = self.resourceinstanceid
+        resourceinstanceid = str(resourceinstanceid)
+
+        # delete any related terms
+        query = Query(se)
+        bool_query = Bool()
+        bool_query.must(Terms(field="_id", terms=[resourceinstanceid]))
+        query.add_query(bool_query)
+        query.include("sets")
+        query.include("permissions.principal_user")
+        results = query.search(index=RESOURCES_INDEX)
+        if len(results["hits"]["hits"]) < 1:
+            raise UnindexedError("This resource is not (yet) indexed")
+        if len(results["hits"]["hits"]) > 1:
+            raise RuntimeError("Resource instance ID exists multiple times in search index")
+        return results["hits"]["hits"][0]
 
     def delete_index(self, resourceinstanceid=None):
         """
@@ -875,6 +915,15 @@ class PublishedModelError(Exception):
 class UnpublishedModelError(Exception):
     def __init__(self, message, code=None):
         self.title = _("Unpublished Model Error")
+        self.message = message
+        self.code = code
+
+    def __str__(self):
+        return repr(self.message)
+
+class UnindexedError(Exception):
+    def __init__(self, message, code=None):
+        self.title = _("Unindexed Error")
         self.message = message
         self.code = code
 

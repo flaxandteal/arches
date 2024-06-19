@@ -26,6 +26,7 @@ from datetime import datetime
 from elasticsearch import Elasticsearch, helpers, ElasticsearchWarning
 from elasticsearch.exceptions import RequestError
 from elasticsearch.helpers import BulkIndexError
+from elasticsearch.client import TasksClient
 from arches.app.models.system_settings import settings
 from arches.app.utils.betterJSONSerializer import JSONSerializer, JSONDeserializer
 
@@ -116,6 +117,30 @@ class SearchEngine(object):
         kwargs = self._add_prefix(**kwargs)
         print("deleting index : %s" % kwargs.get("index"))
         return self.es.options(ignore_status=[400, 404]).indices.delete(**kwargs)
+
+    def update_by_query(self, **kwargs):
+        """
+        Update items by a search in the index.
+        Pass an index and id (or list of ids) to get a specific document(s)
+        Pass a query with a query dsl to perform a search
+
+        """
+
+        kwargs = self._add_prefix(**kwargs)
+        query = kwargs.get("query", None)
+        script = kwargs.get("script", None)
+
+        if query is None or script is None:
+            message = "%s: WARNING: update-by-query missing query or script" % (datetime.now())
+            self.logger.exception(message)
+            raise RuntimeError(message)
+
+        ret = None
+        try:
+            ret = self.es.update_by_query(**kwargs).body
+        except RequestError as detail:
+            self.logger.exception("%s: WARNING: update-by-query failed for query: %s \nException detail: %s\n" % (datetime.now(), query, detail.info))
+        return ret
 
     def search(self, **kwargs):
         """
@@ -230,6 +255,9 @@ class SearchEngine(object):
     def refresh(self, **kwargs):
         kwargs = self._add_prefix(**kwargs)
         self.es.indices.refresh(**kwargs)
+
+    def make_tasks_client(self):
+        return TasksClient(self.es)
 
     def BulkIndexer(outer_self, batch_size=500, **kwargs):
         class _BulkIndexer(object):

@@ -269,6 +269,7 @@ class GeoJSON(APIBase):
 class MVT(APIBase):
     EARTHCIRCUM = 40075016.6856
     PIXELSPERTILE = 256
+    se = SearchEngineFactory().create()
 
     def get(self, request, nodeid, zoom, x, y):
         if hasattr(request.user, "userprofile") is not True:
@@ -283,7 +284,7 @@ class MVT(APIBase):
         cache_key = MVT.create_mvt_cache_key(node, zoom, x, y, request.user)
         tile = cache.get(cache_key)
         if tile is None:
-            resource_ids = get_restricted_instances(request.user, allresources=True)
+            resource_ids = get_restricted_instances(request.user, self.se, allresources=True)
             if len(resource_ids) == 0:
                 resource_ids.append("10000000-0000-0000-0000-000000000001")  # This must have a uuid that will never be a resource id.
             resource_ids = tuple(resource_ids)
@@ -389,7 +390,7 @@ class MVT(APIBase):
                             ) AS geom,
                             1 AS total
                         FROM geojson_geometries
-                        WHERE nodeid = %s and resourceinstanceid not in %s) AS tile;""",
+                        WHERE nodeid = %s and resourceinstanceid in %s) AS tile;""",
                         [nodeid, zoom, x, y, nodeid, resource_ids],
                     )
                 tile = bytes(cursor.fetchone()[0]) if tile is None else tile

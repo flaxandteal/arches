@@ -228,6 +228,14 @@ class Command(BaseCommand):
         )
 
         parser.add_argument(
+            "-ef",
+            "--escape_function",
+            action="store_true",
+            dest="escape_function",
+            help="Setting this flag as true will pass a parameter to the context object at the key escape_function. Functions can then conditionally decide if they will escape when this is true. This is purely dependant on if it has been implemented onto a given function.",
+        )
+
+        parser.add_argument(
             "-create_concepts",
             "--create_concepts",
             action="store",
@@ -325,6 +333,7 @@ class Command(BaseCommand):
                     use_multiprocessing=options["use_multiprocessing"],
                     force=options["yes"],
                     prevent_indexing=prevent_indexing,
+                    escape_function=options["escape_function"],
                 )
             except Exception as exc:
                 import traceback
@@ -1142,6 +1151,7 @@ class Command(BaseCommand):
         use_multiprocessing=False,
         force=False,
         prevent_indexing=False,
+        escape_function=False,
     ):
         """
         Imports business data from all formats. A config file (mapping file) is required for .csv format.
@@ -1228,6 +1238,7 @@ class Command(BaseCommand):
                         create_collections=create_collections,
                         use_multiprocessing=use_multiprocessing,
                         prevent_indexing=prevent_indexing,
+                        escape_function=escape_function,
                         transaction_id=transaction_id,
                     )
                 else:

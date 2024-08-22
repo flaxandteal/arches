@@ -143,7 +143,7 @@ class ArchesFileReader(Reader):
             tile["data"] = new_data
         return tiles
 
-    def import_business_data_without_mapping(self, business_data, reporter, overwrite="append", prevent_indexing=False):
+    def import_business_data_without_mapping(self, business_data, reporter, overwrite="append", prevent_indexing=False, escape_function=False):
         errors = []
         last_resource = None  # only set if prevent_indexing=False
         for resource in business_data["resources"]:
@@ -202,7 +202,9 @@ class ArchesFileReader(Reader):
                         for tile in [k for k in resource["tiles"] if k["parenttile_id"] is None]:
                             update_or_create_tile(tile)
 
-                    resourceinstance.save(index=False)
+                    resourceinstance.save(index=False, context={
+                        "escape_function": escape_function
+                    })
 
                     if not prevent_indexing:
                         last_resource = self.save_descriptors_and_index(
@@ -229,11 +231,11 @@ class ArchesFileReader(Reader):
             blank_tile = None
         return blank_tile
 
-    def import_business_data(self, business_data, mapping=None, overwrite="append", prevent_indexing=False, transaction_id=None):
+    def import_business_data(self, business_data, mapping=None, overwrite="append", prevent_indexing=False, transaction_id=None, escape_function=False):
         reporter = ResourceImportReporter(business_data)
         try:
             if mapping is None or mapping == "":
-                self.import_business_data_without_mapping(business_data, reporter, overwrite=overwrite, prevent_indexing=prevent_indexing)
+                self.import_business_data_without_mapping(business_data, reporter, overwrite=overwrite, prevent_indexing=prevent_indexing, escape_function=escape_function)
             else:
                 blanktilecache = {}
                 target_nodegroup_cardinalities = {}

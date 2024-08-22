@@ -187,11 +187,11 @@ class BusinessDataImporter(object):
         create_collections=False,
         use_multiprocessing=False,
         prevent_indexing=False,
+        escape_function=False,
         transaction_id=None,
     ):
         start = time()
         cursor = connection.cursor()
-
         try:
             if file_format is None:
                 file_format = self.file_format
@@ -204,7 +204,7 @@ class BusinessDataImporter(object):
 
             if file_format == "json":
                 reader.import_business_data(
-                    business_data, mapping=mapping, overwrite=overwrite, prevent_indexing=prevent_indexing, transaction_id=transaction_id
+                    business_data, mapping=mapping, overwrite=overwrite, prevent_indexing=prevent_indexing, transaction_id=transaction_id, escape_function=escape_function
                 )
             elif file_format == "jsonl":
                 with open(self.file[0], "r") as openf:

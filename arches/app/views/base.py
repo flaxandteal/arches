@@ -29,6 +29,7 @@ from arches.app.utils.permission_backend import (
     get_editable_resource_types,
     get_resource_types_by_perm,
     user_can_read_map_layers,
+    get_plugins_by_permission,
 )
 
 
@@ -40,10 +41,7 @@ class BaseManagerView(TemplateView):
         context["system_settings_graphid"] = settings.SYSTEM_SETTINGS_RESOURCE_MODEL_ID
         context["graph_models"] = []
         context["graphs"] = "[]"
-        context["plugins"] = []
-        for plugin in models.Plugin.objects.all().order_by("sortorder"):
-            if self.request.user.has_perm("view_plugin", plugin):
-                context["plugins"].append(plugin)
+        context["plugins"] = get_plugins_by_permission(user=self.request.user)
 
         createable = list(get_createable_resource_models(self.request.user))
         createable.sort(key=lambda x: x.name.lower())

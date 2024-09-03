@@ -440,7 +440,10 @@ class Tile(models.TileModel):
                     )
                 )
             except:
-                node = models.Node.objects.get(nodeid=nodeid)
+                try:
+                    node = models.Node.objects.get(nodeid=nodeid)
+                except models.Node.DoesNotExist:
+                    continue
             datatype = self.datatype_factory.get_instance(node.datatype)
             datatype.post_tile_save(self, nodeid, {
                 "GET": request.GET if request else {},
@@ -475,11 +478,14 @@ class Tile(models.TileModel):
 
         with transaction.atomic():
             for nodeid in self.data.keys():
-                node = next(
-                    item
-                    for item in self.serialized_graph["nodes"]
-                    if item["nodeid"] == nodeid
-                )
+                try:
+                    node = next(
+                        item
+                        for item in self.serialized_graph["nodes"]
+                        if item["nodeid"] == nodeid
+                    )
+                except StopIteration:
+                    continue
                 datatype = self.datatype_factory.get_instance(node["datatype"])
                 datatype.pre_tile_save(self, nodeid)
             self.__preSave(request, context=context)

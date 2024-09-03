@@ -56,6 +56,8 @@ from arches.app.utils.permission_backend import (
     user_is_resource_reviewer,
     get_filtered_instances,
     get_nodegroups_by_perm,
+    user_has_plugin_permissions,
+    get_plugins_by_permission,
 )
 from arches.app.utils.geo_utils import GeoUtils
 from arches.app.utils.permission_backend import user_is_resource_editor
@@ -1045,16 +1047,13 @@ class Card(APIBase):
 
 class Plugins(View):
     def get(self, request, plugin_id=None):
-        if plugin_id:
-            plugins = models.Plugin.objects.filter(pk=plugin_id)
+        if plugin_id is None:
+            plugins = get_plugins_by_permission(user=request.user)
         else:
-            plugins = models.Plugin.objects.all()
-
-        plugins = [
-            plugin
-            for plugin in plugins
-            if self.request.user.has_perm("view_plugin", plugin)
-        ]
+            plugins = user_has_plugin_permissions(
+                user=request.user,
+                plugins=[models.Plugin.objects.get(pk=plugin_id)]
+            )
 
         return JSONResponse(plugins)
 

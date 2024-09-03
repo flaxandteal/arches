@@ -395,6 +395,10 @@ class Resource(models.ResourceInstance):
         if str(self.graph_id) != str(settings.SYSTEM_SETTINGS_RESOURCE_MODEL_ID):
             datatype_factory = DataTypeFactory()
 
+            if not self.get_serialized_graph()["nodes"]:
+                logger.error("Graph for resource %s (%s) missing graph when indexing", str(self.pk), str(self.graphid))
+                return
+
             node_datatypes = {
                 str(nodeid): datatype
                 for nodeid, datatype in (

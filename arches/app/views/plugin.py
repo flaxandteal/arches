@@ -23,22 +23,26 @@ from arches.app.models.system_settings import settings
 from arches.app.utils.betterJSONSerializer import JSONSerializer
 from arches.app.utils.response import JSONResponse
 from arches.app.views.base import MapBaseManagerView
+from arches.app.utils.permission_backend import user_has_plugin_permissions
 
 
 class PluginView(MapBaseManagerView):
     action = None
 
     def get(self, request, pluginid=None, slug=None):
-        if slug is not None:
-            plugin = models.Plugin.objects.get(slug=slug)
-        else:
-            plugin = models.Plugin.objects.get(pk=pluginid)
+        if not slug or pluginid:
+            raise Exception("Need pluginid or slug")
 
-        if not request.user.has_perm("view_plugin", plugin):
-            if slug is not None:
-                return redirect("/auth?next=/plugins/{}".format(slug))
-            if slug is not None:
-                return redirect("/auth?next=/plugins/{}".format(pluginid))
+        pluginid = slug or pluginid
+        plugin = None
+        if user_has_plugin_permissions(request.user, plugin=pluginid):
+            try:
+                pluginid = uuid.UUID(pluginid) # type: ignore
+                plugin = models.Plugin.objects.get(pk=pluginid)
+            except ValueError:
+                plugin = models.Plugin.objects.get(slug=pluginid)
+        if not plugin:
+            return redirect("/auth?next=/plugins/{}".format(pluginid))
 
         if request.GET.get("json"):
             return JSONResponse(plugin)

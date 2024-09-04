@@ -10,7 +10,7 @@
                 <div class="workflow-name" data-bind="text: workflowName()">{% trans "Insert Workflow Name" %}</div>
             </div>
 
-            <div class="workflow-top-control">
+            <div class="workflow-top-control" style="max-width: 500px">
                 <!-- ko if: (activeStep()._index === steps().length - 1) || isWorkflowFinished() -->
                 <button 
                     data-bind="click: finishWorkflow"
@@ -31,7 +31,7 @@
                 >
                     <i class=" ion-android-cancel"></i>
                     <span>
-                        {% trans "Delete" %}
+                        {% trans "Exit without Saving" %}
                     </span>
                 </button>
             </div>

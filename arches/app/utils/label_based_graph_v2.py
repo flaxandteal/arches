@@ -9,16 +9,18 @@ from types import SimpleNamespace
 RESOURCE_ID_KEY = "@resource_id"
 NODE_ID_KEY = "@node_id"
 TILE_ID_KEY = "@tile_id"
+PARENT_NODE_ID_KEY = "@parent_node_id"
 
 NON_DATA_COLLECTING_NODE = "NON_DATA_COLLECTING_NODE"
 
 
 class LabelBasedNode(object):
-    def __init__(self, name, node_id, tile_id, value, cardinality=None):
+    def __init__(self, name, node_id, tile_id, value, cardinality=None, parent_node_id=None):
         self.name = name
         self.node_id = node_id
         self.tile_id = tile_id
         self.cardinality = cardinality
+        self.parent_node_id = parent_node_id
         self.value = value
         self.child_nodes = []
 
@@ -75,6 +77,8 @@ class LabelBasedNode(object):
         elif not compact:
             display_data[NODE_ID_KEY] = self.node_id
             display_data[TILE_ID_KEY] = self.tile_id
+            if self.parent_node_id:
+                display_data[PARENT_NODE_ID_KEY] = self.parent_node_id
             if self.value is not None and self.value is not NON_DATA_COLLECTING_NODE:
                 display_data.update(self.value)
 
@@ -335,6 +339,11 @@ class LabelBasedGraph(object):
         for associated_tile in node_ids_to_tiles_reference.get(input_node["nodeid"], [input_tile]):
             parent_tile = associated_tile.parenttile
 
+            # If the associated tile isn't equal to the input tile then it has a parent tile
+            parent_node_id = None
+            if associated_tile.tileid != input_tile.tileid:
+                parent_node_id = input_tile.nodegroup.nodegroupid
+            
             if associated_tile == input_tile or parent_tile == input_tile:
                 if (
                     cls.is_valid_semantic_node(
@@ -345,8 +354,8 @@ class LabelBasedGraph(object):
                     )
                     or input_node["nodeid"] in associated_tile.data
                 ):
-
                     label_based_node = LabelBasedNode(
+                        parent_node_id=parent_node_id,
                         name=input_node["name"],
                         node_id=input_node["nodeid"],
                         tile_id=str(associated_tile.pk),

@@ -1,4 +1,4 @@
-FROM ubuntu:18.04 as base 
+FROM ubuntu:24.04 as base 
 USER root
 
 ## Setting default environment variables
@@ -26,20 +26,19 @@ RUN set -ex \
         docbook-mathml \
         libgdal-dev \
         libpq-dev \
-        python3.8 \
-        python3.8-dev \
+        python3.12 \
+        python3.12-dev \
         curl \
-        python3.8-distutils \
         libldap2-dev libsasl2-dev ldap-utils \
         dos2unix \
         " \
     && apt-get update -y \
-    && apt-get install -y --no-install-recommends $BUILD_DEPS \
-    && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
-    && python3.8 get-pip.py
+    && apt-get install -y --no-install-recommends $BUILD_DEPS
 
-RUN pip3 wheel --no-cache-dir -b /tmp gunicorn \
-    && pip3 wheel --no-cache-dir -b /tmp django-auth-ldap
+RUN apt-get install -y python3-pip
+
+RUN pip wheel --no-cache-dir gunicorn \
+    && pip wheel --no-cache-dir django-auth-ldap
 
 # Add Docker-related files
 COPY docker/entrypoint.sh ${WHEELS}/entrypoint.sh
@@ -60,28 +59,30 @@ COPY --from=wheelbuilder ${WHEELS} /wheels
 # a minimised build of GDAL could remove several hundred MB from the container layer.
 RUN set -ex \
     && RUN_DEPS=" \
-        mime-support \
         libgdal-dev \
         python3-venv \
         postgresql-client-12 \
-        python3.8 \
-        python3.8-distutils \
-        python3.8-venv \
+        python3.12 \
+        python3-pip \
+        python3.12-venv \
     " \
-    && apt-get install -y --no-install-recommends curl \
-    && curl -sL https://deb.nodesource.com/setup_10.x | bash - \
+    && apt-get update -y \
+    && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && NODE_MAJOR=20 \
+    && (echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" > /etc/apt/sources.list.d/nodesource.list) \
     && curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
     && add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -sc)-pgdg main" \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends $RUN_DEPS \
-    && curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
-    && python3.8 get-pip.py \
-    && apt-get install -y nodejs \
+    && apt-get install -y nodejs
 
 # Install npm components
-COPY ./arches/install/package.json ${ARCHES_ROOT}/arches/install/package.json
-WORKDIR ${ARCHES_ROOT}/arches/install
+COPY ./package.json ${ARCHES_ROOT}/package.json
+WORKDIR ${ARCHES_ROOT}
 RUN mkdir -p ${ARCHES_ROOT}/node_modules
+RUN apt-get install -y git
 RUN npm install
 
 ## Install virtualenv
@@ -89,8 +90,10 @@ WORKDIR ${WEB_ROOT}
 
 RUN mv ${WHEELS}/entrypoint.sh entrypoint.sh
 
-RUN python3.8 -m venv ENV \
+RUN python3.12 -m venv ENV \
     && . ENV/bin/activate \
+    && pip install wheel setuptools requests \
+    && pip install rjsmin==1.2.0 MarkupSafe==2.0.0 \
     && pip install requests \
     && pip install -f ${WHEELS} django-auth-ldap \
     && pip install -f ${WHEELS} gunicorn \
@@ -105,7 +108,7 @@ COPY . ${ARCHES_ROOT}
 WORKDIR ${ARCHES_ROOT}
 
 RUN . ../ENV/bin/activate \
-    && pip install -e '.[dev]' --no-binary :all:
+    && pip install -e '.[dev]' --prefer-binary
 
 # Set default workdir
 WORKDIR ${ARCHES_ROOT}

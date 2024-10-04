@@ -119,15 +119,23 @@ def _generate_urls_json():
         os.path.join(_get_base_path(), "..", "frontend_configuration", "urls.json")
     )
 
-    with open(destination_path, "w", encoding="utf-8") as file:
-        json.dump(
-            {
-                "_comment": "This file is auto-generated. Do not edit manually.",
-                **sorted_urls,
-            },
-            file,
-            indent=4,
-        )
+    try:
+        with open(
+            destination_path,
+            "r",
+        ) as file:
+            if json.load(file) != destination_path:
+                raise RuntimeError("App frontend configuration exists but does not match")
+    except IOError:
+        with open(destination_path, "w", encoding="utf-8") as file:
+            json.dump(
+                {
+                    "_comment": "This file is auto-generated. Do not edit manually.",
+                    **sorted_urls,
+                },
+                file,
+                indent=4,
+            )
 
 
 def _generate_webpack_configuration():
@@ -210,8 +218,13 @@ def _generate_tsconfig_paths():
         os.path.join(base_path, "..", "frontend_configuration", "tsconfig-paths.json")
     )
 
-    with open(destination_path, "w", encoding="utf-8") as file:
-        json.dump(tsconfig_paths_data, file, indent=4)
+    try:
+        with open(tsconfig_path, "r") as file:
+            if json.load(file) != tsconfig_paths_data:
+                raise RuntimeError("App frontend configuration exists but does not match")
+    except IOError:
+        with open(destination_path, "w", encoding="utf-8") as file:
+            json.dump(tsconfig_paths_data, file, indent=4)
 
 
 def _get_base_path():

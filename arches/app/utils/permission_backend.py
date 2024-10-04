@@ -98,23 +98,13 @@ class PermissionFramework(metaclass=ABCMeta):
     def process_new_user(self, instance, created): ...
 
     @abstractmethod
-<<<<<<< HEAD
+    def get_plugins_by_permission(self, user, perms = "view_plugin"): ...
+
+    @abstractmethod
+    def user_has_plugin_permissions(self, user, plugin, perms = "view_plugin"): ...
+
+    @abstractmethod
     def user_has_resource_model_permissions(self, user, perms, resource): ...
-||||||| parent of ab60bf15e0 (feat: plugin permissions)
-    def user_has_resource_model_permissions(self, user, perms, resource):
-        ...
-=======
-    def get_plugins_by_permission(self, user, perms = "view_plugin"):
-        ...
-
-    @abstractmethod
-    def user_has_plugin_permissions(self, user, plugin, perms = "view_plugin"):
-        ...
-
-    @abstractmethod
-    def user_has_resource_model_permissions(self, user, perms, resource):
-        ...
->>>>>>> ab60bf15e0 (feat: plugin permissions)
 
     @abstractmethod
     def user_can_read_resource(self, user, resourceid=None): ...

@@ -272,6 +272,51 @@ class ArchesPermissionBase(PermissionFramework, metaclass=ABCMeta):
         """Hook for spotting permission updates on a group."""
         ...
 
+    def get_plugins_by_permission(self, user: User, perms: str | Iterable[str] = "view_plugin") -> list[Plugin | str]:
+        """
+        Checks which plugins a user has any explicit permissions
+
+        Arguments:
+        user -- the user to check
+        plugins -- the plugins against which to confirm access
+        perms -- one or a list of permissions to be checked
+
+        Returns:
+        A list of plugins that match
+
+        """
+        plugin_objs = list(Plugin.objects.all().order_by("sortorder"))
+        if isinstance(perms, str):
+            perms = (perms,)
+        return [plugin for plugin in plugin_objs if all(user.has_perm(perm, plugin) for perm in perms)]
+
+    def user_has_plugin_permissions(self, user: User, plugin: Plugin | uuid.UUID | str | None, perms: str | Iterable[str] = "view_plugin") -> bool:
+        """
+        Checks if a user has any explicit permissions to a plugin
+
+        Arguments:
+        user -- the user to check
+        plugin -- the plugin against which to confirm access, or 
+        perms -- one or a list of permissions to be checked
+
+        Returns:
+        A list of 0, 1 or more plugin IDs that match
+
+        """
+
+        plugin_obj: Plugin
+        if isinstance(plugin, Plugin):
+            plugin_obj = plugin
+        else:
+            try:
+                plugin = uuid.UUID(plugin) # type: ignore
+                plugin_obj = Plugin.objects.get(pk=plugin)
+            except ValueError:
+                plugin_obj = Plugin.objects.get(slug=plugin)
+        if isinstance(perms, str):
+            perms = (perms,)
+        return all(user.has_perm(perm, plugin_obj) for perm in perms)
+
     def user_has_resource_model_permissions(
         self,
         user: User,

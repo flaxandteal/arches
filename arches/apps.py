@@ -44,17 +44,17 @@ if settings.FILE_TYPE_CHECKING in (True, False):
 def check_cache_backend_for_production(app_configs, **kwargs):
     errors = []
     your_cache = settings.CACHES["default"]["BACKEND"]
-    # if (
-    #     not settings.DEBUG
-    #     and your_cache == "django.core.cache.backends.dummy.DummyCache"
-    # ):
-    #     errors.append(
-    #         Error(
-    #             "Using dummy cache in production",
-    #             obj=settings.APP_NAME,
-    #             id="arches.E001",
-    #         )
-    #     )
+    if (
+        (not settings.DEBUG and settings.MODE != "STATIC")
+        and your_cache == "django.core.cache.backends.dummy.DummyCache"
+    ):
+        errors.append(
+            Error(
+                "Using dummy cache in production",
+                obj=settings.APP_NAME,
+                id="arches.E001",
+            )
+        )
     return errors
 
 

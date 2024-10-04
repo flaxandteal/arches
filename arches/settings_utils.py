@@ -132,4 +132,4 @@ def build_templates_config(
     except Exception as e:
         # Ensures error message is shown if error encountered in webpack build
         sys.stdout.write(str(e))
-        raise e
+        # We do not raise, as there are use-cases that do not need a frontend configuration.

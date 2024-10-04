@@ -176,7 +176,7 @@ def generate_frontend_configuration():
             ) as file:
                 if json.load(file) != frontend_configuration_settings_data:
                     raise RuntimeError("App frontend configuration exists but does not match")
-        except IOError:
+        except (IOError, FileNotFoundError):
             with open(
                 frontend_configuration_settings_path,
                 "w",
@@ -226,7 +226,7 @@ def generate_frontend_configuration():
             with open(tsconfig_path, "r") as file:
                 if json.load(file) != tsconfig_paths_data:
                     raise RuntimeError("App frontend configuration exists but does not match")
-        except IOError:
+        except (IOError, FileNotFoundError):
             with open(tsconfig_path, "w") as file:
                 json.dump(tsconfig_paths_data, file, indent=4)
 

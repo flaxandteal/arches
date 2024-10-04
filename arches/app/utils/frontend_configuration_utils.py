@@ -126,7 +126,7 @@ def _generate_urls_json():
         ) as file:
             if json.load(file) != destination_path:
                 raise RuntimeError("App frontend configuration exists but does not match")
-    except IOError:
+    except (IOError, FileNotFoundError):
         with open(destination_path, "w", encoding="utf-8") as file:
             json.dump(
                 {
@@ -219,10 +219,10 @@ def _generate_tsconfig_paths():
     )
 
     try:
-        with open(tsconfig_path, "r") as file:
+        with open(destination_path, "r") as file:
             if json.load(file) != tsconfig_paths_data:
                 raise RuntimeError("App frontend configuration exists but does not match")
-    except IOError:
+    except (IOError, FileNotFoundError):
         with open(destination_path, "w", encoding="utf-8") as file:
             json.dump(tsconfig_paths_data, file, indent=4)
 

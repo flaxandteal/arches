@@ -169,11 +169,19 @@ def generate_frontend_configuration():
             f"Writing frontend configuration to: {frontend_configuration_settings_path} \n"
         )
 
-        with open(
-            frontend_configuration_settings_path,
-            "w",
-        ) as file:
-            json.dump(frontend_configuration_settings_data, file, indent=4)
+        try:
+            with open(
+                frontend_configuration_settings_path,
+                "r",
+            ) as file:
+                if json.load(file) != frontend_configuration_settings_data:
+                    raise RuntimeError("App frontend configuration exists but does not match")
+        except IOError:
+            with open(
+                frontend_configuration_settings_path,
+                "w",
+            ) as file:
+                json.dump(frontend_configuration_settings_data, file, indent=4)
 
         tsconfig_paths_data = {
             "_comment": "This is a generated file. Do not edit directly.",
@@ -214,8 +222,14 @@ def generate_frontend_configuration():
         )
         sys.stdout.write(f"Writing tsconfig path data to: {tsconfig_path} \n")
 
-        with open(tsconfig_path, "w") as file:
-            json.dump(tsconfig_paths_data, file, indent=4)
+        try:
+            with open(tsconfig_path, "r") as file:
+                if json.load(file) != tsconfig_paths_data:
+                    raise RuntimeError("App frontend configuration exists but does not match")
+        except IOError:
+            with open(tsconfig_path, "w") as file:
+                json.dump(tsconfig_paths_data, file, indent=4)
+
 
     except Exception as e:
         # Ensures error message is shown if error encountered

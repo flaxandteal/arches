@@ -44,15 +44,15 @@ supported_by_django_ratelimit = (
 def check_cache_backend_for_production(app_configs, **kwargs):
     errors = []
     your_cache = settings.CACHES["default"]["BACKEND"]
-    # if not settings.DEBUG and your_cache not in supported_by_django_ratelimit:
-    #     errors.append(
-    #         Error(
-    #             "Cache backend does not support rate-limiting",
-    #             hint=f"Your cache: {your_cache}\n\tSupported caches: {supported_by_django_ratelimit}",
-    #             obj=settings.APP_NAME,
-    #             id="arches.E001",
-    #         )
-    #     )
+    if (not settings.DEBUG and settings.MODE != "STATIC") and your_cache not in supported_by_django_ratelimit:
+        errors.append(
+            Error(
+                "Cache backend does not support rate-limiting",
+                hint=f"Your cache: {your_cache}\n\tSupported caches: {supported_by_django_ratelimit}",
+                obj=settings.APP_NAME,
+                id="arches.E001",
+            )
+        )
     return errors
 
 

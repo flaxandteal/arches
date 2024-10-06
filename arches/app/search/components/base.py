@@ -81,12 +81,10 @@ class SearchFilterFactory(object):
             return None
 
     def get_searchview_name(self):
-        if not self.request:
+        if not self.parameters:
             searchview_component_name = None
-        elif self.request.method == "POST":
-            searchview_component_name = self.request.POST.get("search-view", None)
         else:
-            searchview_component_name = self.request.GET.get("search-view", None)
+            searchview_component_name = self.parameters.get("search-view", None)
 
         if not searchview_component_name:
             # get default search_view component

@@ -34,7 +34,7 @@ from guardian.exceptions import WrongAppError
 import guardian.shortcuts as gsc
 
 import inspect
-from arches.app.models.models import Node, NodeGroup, TileModel
+from arches.app.models.models import Node, NodeGroup, TileModel, Plugin
 from django.db.models import Q
 from arches.app.models.system_settings import settings
 from arches.app.models.models import ResourceInstance, MapLayer
@@ -317,13 +317,7 @@ class ArchesPermissionBase(PermissionFramework, metaclass=ABCMeta):
             perms = (perms,)
         return all(user.has_perm(perm, plugin_obj) for perm in perms)
 
-    def user_has_resource_model_permissions(
-        self,
-        user: User,
-        perms: str | Iterable[str],
-        resource: ResourceInstance | None = None,
-        graph_id: str | None = None,
-    ) -> bool:
+    def user_has_resource_model_permissions(self, user: User, perms: str | Iterable[str], resource: ResourceInstance | None=None, graph_id: str | None=None) -> bool:
         """
         Checks if a user has any explicit permissions to a model's nodegroups
 

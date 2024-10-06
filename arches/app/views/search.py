@@ -83,7 +83,7 @@ class SearchView(MapBaseManagerView):
             .exclude(publication=None)
         )
         geocoding_providers = Geocoder.objects.all()
-        search_component_factory = SearchFilterFactory(request)
+        search_component_factory = SearchFilterFactory(dict(request.GET), request.user)
         searchview_instance = search_component_factory.get_searchview_instance()
         if not searchview_instance:
             raise Http404(_("Search view instance not found"))
@@ -359,7 +359,7 @@ def search_results(request, returnDsl=False):
     for bag in (request.GET, request.POST):
         for key in bag:
             parameters[key] = bag[key]
-    search_filter_factory = SearchFilterFactory(parameters, user)
+    search_filter_factory = SearchFilterFactory(parameters, request.user)
     searchview_component_instance = search_filter_factory.get_searchview_instance()
     if not searchview_component_instance:
         unavailable_searchview_name = search_filter_factory.get_searchview_name()
@@ -404,9 +404,6 @@ def get_provisional_type(provisional_filter, user):
     """
 
     result = False
-    provisional_filter = JSONDeserializer().deserialize(
-        request.GET.get("provisional-filter", "[]")
-    )
     user_is_reviewer = user_is_resource_reviewer(user)
     if user_is_reviewer is not False:
         if len(provisional_filter) == 0:

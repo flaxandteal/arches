@@ -114,7 +114,7 @@ class SearchResultsFilter(BaseSearchFilter):
 
         descriptor_types = ("displaydescription", "displayname")
         active_and_default_language_codes = (get_language(), settings.LANGUAGE_CODE)
-        groups = [group.id for group in self.request.user.groups.all()]
+        groups = [group.id for group in self.user.groups.all()]
         response_object["groups"] = groups
 
         # only reuturn points and geometries a user is allowed to view
@@ -125,7 +125,7 @@ class SearchResultsFilter(BaseSearchFilter):
         for result in response_object["results"]["hits"]["hits"]:
             result.update(
                 permission_backend.get_search_ui_permissions(
-                    self.request.user, result, groups
+                    self.user, result, groups
                 )
             )
             result["_source"]["points"] = select_geoms_for_results(

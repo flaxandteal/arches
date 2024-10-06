@@ -852,7 +852,7 @@ class SearchTests(ArchesTestCase):
         request = HttpRequest()
         request.method = "GET"
         request.user = User.objects.get(username="admin")
-        search_component_factory = SearchFilterFactory(request)
+        search_component_factory = SearchFilterFactory(dict(request.GET), request.user)
         searchview_component_instance = (
             search_component_factory.get_searchview_instance()
         )
@@ -866,7 +866,7 @@ class SearchTests(ArchesTestCase):
         request = HttpRequest()
         request.method = "GET"
         request.user = User.objects.get(username="anonymous")
-        search_component_factory = SearchFilterFactory(request)
+        search_component_factory = SearchFilterFactory(dict(request.GET), request.user)
         searchview_component_instance = (
             search_component_factory.get_searchview_instance()
         )

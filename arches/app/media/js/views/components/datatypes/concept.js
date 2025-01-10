@@ -53,7 +53,8 @@ define([
             if (arches.conceptCollections.length === 0) {
                 $.ajax({
                     url: arches.urls.get_concept_collections,
-                    type: 'json'
+                    type: 'GET',
+                    datatType: 'json'
                 }).done(function(data){
                     arches.conceptCollections = data;
                     self.conceptCollections(data);

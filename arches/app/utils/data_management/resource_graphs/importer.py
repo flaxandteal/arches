@@ -123,9 +123,16 @@ def import_graph(graphs, overwrite_graphs=True, user=None, strict=False):
                                 "The ontology class of this node does not exist in the indicated ontology scheme."
                             )
                     node_config = node.config
-                    default_config = DDataType.objects.get(
-                        datatype=node.datatype
-                    ).defaultconfig
+                    try:
+                        default_config = DDataType.objects.get(
+                            datatype=node.datatype
+                        ).defaultconfig
+                    except DDataType.DoesNotExist:
+                        logging.error(
+                            "Missing datatype: %s",
+                            node.datatype
+                        )
+                        raise
                     node.config = check_default_configs(default_config, node_config)
 
                 if not hasattr(graph, "cards"):

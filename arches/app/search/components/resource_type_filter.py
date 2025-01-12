@@ -19,7 +19,7 @@ details = {
 
 
 def get_permitted_graphids(user, permitted_nodegroups):
-    return get_resource_types_by_perm(user, "read_nodegroup")
+    return get_resource_types_by_perm(user, ["models.read_nodegroup"])
 
 
 class ResourceTypeFilter(BaseSearchFilter):

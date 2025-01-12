@@ -263,7 +263,7 @@ class Resource(models.ResourceInstance):
         self.tiles = list(models.TileModel.objects.filter(resourceinstance=self))
         if user:
             readable_nodegroups = get_nodegroups_by_perm(user, perm, any_perm=True)
-            self.tiles = [tile for tile in self.tiles if tile.nodegroup is not None and tile.nodegroup_id in readable_nodegroups]
+            self.tiles = [tile for tile in self.tiles if tile.nodegroup is not None and str(tile.nodegroup_id) in readable_nodegroups]
 
     # # flatten out the nested tiles into a single array
     def get_flattened_tiles(self):
@@ -336,6 +336,10 @@ class Resource(models.ResourceInstance):
 
         if str(self.graph_id) != str(settings.SYSTEM_SETTINGS_RESOURCE_MODEL_ID):
             datatype_factory = DataTypeFactory()
+
+            if not self.get_serialized_graph()["nodes"]:
+                logger.error("Graph for resource %s (%s) missing graph when indexing", str(self.pk), str(self.graphid))
+                return
 
             node_datatypes = {
                 str(nodeid): datatype for nodeid, datatype in ((k["nodeid"], k["datatype"]) for k in self.get_serialized_graph()["nodes"])

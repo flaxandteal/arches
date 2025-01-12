@@ -419,7 +419,7 @@ class Graphs(APIBase):
         else:
             exclusions = []
 
-        perm = "read_nodegroup"
+        perm = "models.read_nodegroup"
         user = request.user
         if graph_id and not self.action:
             graph = Graph.objects.get(graphid=graph_id)
@@ -488,7 +488,7 @@ class Resources(APIBase):
         format = request.GET.get("format", "json-ld")
         hide_hidden_nodes = bool(request.GET.get("hidden", "true").lower() == "false")
         user = request.user
-        perm = "read_nodegroup"
+        perm = "models.read_nodegroup"
 
         if format not in allowed_formats:
             return JSONResponse(status=406, reason="incorrect format specified, only %s formats allowed" % allowed_formats)
@@ -857,7 +857,7 @@ class Card(APIBase):
                     editable_nodegroups.append(node.nodegroup)
                     nodegroups.append(node.nodegroup)
                     added = True
-                if not added and request.user.has_perm("read_nodegroup", node.nodegroup):
+                if not added and request.user.has_perm("models.read_nodegroup", node.nodegroup):
                     nodegroups.append(node.nodegroup)
 
         user_is_reviewer = user_is_resource_reviewer(request.user)
@@ -1131,7 +1131,7 @@ class ResourceReport(APIBase):
         compact = True
         if uncompacted_value == "true":
             compact = False
-        perm = "read_nodegroup"
+        perm = "models.read_nodegroup"
 
         resource = Resource.objects.get(pk=resourceid)
         graph = Graph.objects.get(graphid=resource.graph_id)
@@ -1176,6 +1176,7 @@ class ResourceReport(APIBase):
 
         if "tiles" not in exclude:
             resource.load_tiles(user=request.user, perm=perm)
+            print(resource.tiles)
             permitted_tiles = resource.tiles
 
             resp["tiles"] = permitted_tiles
@@ -1304,7 +1305,7 @@ class BulkResourceReport(APIBase):
                 .order_by("sortorder")
             )
 
-            perm = "read_nodegroup"
+            perm = "models.read_nodegroup"
             permitted_cards = []
 
             for card in cards:
@@ -1349,7 +1350,7 @@ class BulkDisambiguatedResourceInstance(APIBase):
         hide_hidden_nodes = bool(request.GET.get("hidden", "true").lower() == "false")
         compact = bool(request.GET.get("uncompacted", "false").lower() == "false")
         user = request.user
-        perm = "read_nodegroup"
+        perm = "models.read_nodegroup"
 
         disambiguated_resource_instances = OrderedDict().fromkeys(resource_ids)
         for resource in Resource.objects.filter(pk__in=resource_ids):
@@ -1362,18 +1363,34 @@ class BulkDisambiguatedResourceInstance(APIBase):
 
 @method_decorator(csrf_exempt, name="dispatch")
 class Tile(APIBase):
-    def get(self, request, tileid):
-        try:
-            tile = models.TileModel.objects.get(tileid=tileid)
-        except Exception as e:
-            return JSONResponse(str(e), status=404)
+    def get(self, request, tileid=None):
+        if tileid is not None:
+            try:
+                tile = models.TileModel.objects.get(tileid=tileid)
+            except Exception as e:
+                return JSONResponse(str(e), status=404)
 
-        # filter tiles from attribute query based on user permissions
-        permitted_nodegroups = get_nodegroups_by_perm(request.user, "models.read_nodegroup")
-        if str(tile.nodegroup_id) in permitted_nodegroups:
-            return JSONResponse(tile, status=200)
+            # filter tiles from attribute query based on user permissions
+            permitted_nodegroups = get_nodegroups_by_perm(request.user, "models.read_nodegroup")
+            if str(tile.nodegroup_id) in permitted_nodegroups:
+                return JSONResponse(tile, status=200)
+            else:
+                return JSONResponse(_("Tile not found."), status=404)
+
         else:
-            return JSONResponse(_("Tile not found."), status=404)
+            criteria = {}
+            if (nodegroup_ids := request.GET.get("nodegroup_ids")):
+                nodegroup_ids = json.loads(nodegroup_ids)
+                criteria["nodegroup_id__in"] = [str(ng) for ng in nodegroup_ids]
+            if (resource_ids := request.GET.get("resource_ids")):
+                resource_ids = json.loads(resource_ids)
+                criteria["resourceinstance_id__in"] = [str(ri) for ri in resource_ids]
+            tiles = models.TileModel.objects.filter(**criteria).all()
+
+            # filter tiles from attribute query based on user permissions
+            permitted_nodegroups = get_nodegroups_by_perm(request.user, "models.read_nodegroup")
+            tiles = [tile for tile in tiles if tile.nodegroup_id in permitted_nodegroups]
+            return JSONResponse(tiles, status=200)
 
     def post(self, request, tileid):
         tileview = TileView()

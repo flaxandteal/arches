@@ -249,6 +249,7 @@ urlpatterns = [
     ),
     re_path(r"^resources/(?P<slug>[-\w]+)/(?P<resourceid>%s|())$" % uuid_regex, api.Resources.as_view(), name="resources_slug"),
     re_path(r"^resources/(?P<resourceid>%s|())$" % uuid_regex, api.Resources.as_view(), name="resources"),
+    re_path(r"^api/tiles$", api.Tile.as_view(), name="api_tiles"),
     re_path(r"^api/tiles/(?P<tileid>%s|())$" % (uuid_regex), api.Tile.as_view(), name="api_tiles"),
     re_path(r"^api/nodes/(?P<nodeid>%s|())$" % (uuid_regex), api.Node.as_view(), name="api_nodes"),
     re_path(r"^api/nodegroup/(?P<nodegroupid>%s|())$" % (uuid_regex), api.NodeGroup.as_view(), name="api_nodegroup"),

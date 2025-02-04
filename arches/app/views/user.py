@@ -186,10 +186,10 @@ class UserManagerView(BaseManagerView):
                                 perm_map[subj][typ].setdefault(act, 0)
                                 perm_map[subj][typ][act] += 1
                                 if subj.startswith("dg:"):
-                                    groupid = subj[2:]
+                                    groupid = subj[3:]
                                     groups.add(groupid)
                                     data[str(user.pk)].setdefault(groupid, {"primary": False})
-                                    data[str(user.pk)][groupid]["permissions"] = perm_map[f"g:{groupid}"]
+                                    data[str(user.pk)][groupid]["permissions"] = perm_map[f"dg:{groupid}"]
 
                     groups = {str(g.pk): g.name for g in Group.objects.filter(pk__in=groups)}
                     for userid, user in data.items():

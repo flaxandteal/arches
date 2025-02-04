@@ -8,7 +8,6 @@ import uuid
 import sys
 import urllib.request, urllib.parse, urllib.error
 import os
-import imp
 import logging
 from arches.setup import unzip_file
 from arches.management.commands import utils

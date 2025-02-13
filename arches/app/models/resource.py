@@ -364,6 +364,14 @@ class Resource(models.ResourceInstance):
 
             resource_indexed.send(sender=self.__class__, instance=self)
 
+    def get_sets(self):
+        if not self.resourceinstanceid:
+            return []
+        doc = self.get_index()
+        if (sets := doc.get("_source", {}).get("sets", [])):
+            return sets
+        return []
+
     def get_documents_to_index(self, fetchTiles=True, datatype_factory=None, node_datatypes=None, context=None):
         """
         Gets all the documents nessesary to index a single resource
@@ -388,7 +396,10 @@ class Resource(models.ResourceInstance):
 
         document["displayname"] = []
         document["displaydescription"] = []
-        document["sets"] = []
+        try:
+            document["sets"] = self.get_sets()
+        except UnindexedError:
+            ...
         document["map_popup"] = []
         for lang in settings.LANGUAGES:
             if context is None:

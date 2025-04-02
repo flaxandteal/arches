@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import datetime
 import logging
+from collections import defaultdict
 from time import time
 from uuid import UUID
 from types import SimpleNamespace
@@ -1004,19 +1005,37 @@ class Resource(models.ResourceInstance):
                     for resource in related_resources["docs"]
                     if resource["found"]
                 ]
-                count_query = (
-                    models.ResourceInstance.objects.filter(pk__in=related_resource_ids)
-                    .annotate(
-                        total_relations=(
-                            Count("from_resxres", distinct=True)
-                            + Count("to_resxres", distinct=True)
-                        )
+                # count_query = (
+                #     models.ResourceInstance.objects.filter(pk__in=related_resource_ids)
+                #     .annotate(
+                #         total_relations=(
+                #             Count("from_resxres", distinct=True)
+                #             + Count("to_resxres", distinct=True)
+                #         )
+                to_counts = (
+                    models.ResourceXResource.objects.filter(
+                        resourceinstanceidto__in=related_resource_ids
                     )
-                    .only("pk")
+                    .values("resourceinstanceidto")
+                    .annotate(to_count=Count("resourceinstanceidto"))
                 )
-                total_relations_by_resource_id = {
-                    obj.pk: obj.total_relations for obj in count_query.iterator()
-                }
+                from_counts = (
+                    models.ResourceXResource.objects.filter(
+                        resourceinstanceidfrom__in=related_resource_ids
+                    )
+                    .values("resourceinstanceidfrom")
+                    .annotate(from_count=Count("resourceinstanceidfrom"))
+                )
+
+                total_relations_by_resource_id: dict[UUID:int] = defaultdict(int)
+                for related_resource_count in to_counts:
+                    total_relations_by_resource_id[
+                        related_resource_count["resourceinstanceidto"]
+                    ] += related_resource_count["to_count"]
+                for related_resource_count in from_counts:
+                    total_relations_by_resource_id[
+                        related_resource_count["resourceinstanceidfrom"]
+                    ] += related_resource_count["from_count"]
 
                 for resource in related_resources["docs"]:
                     if resource["found"]:

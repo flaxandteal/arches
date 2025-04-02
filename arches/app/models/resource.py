@@ -993,7 +993,6 @@ class Resource(models.ResourceInstance):
             ret["resource_relationships"].append(relation)
             instanceids.add(str(to_resource))
             instanceids.add(str(from_resource))
-
         if str(self.resourceinstanceid) in instanceids:
             instanceids.remove(str(self.resourceinstanceid))
 

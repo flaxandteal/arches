@@ -1018,6 +1018,9 @@ class Resource(models.ResourceInstance):
                     )
                     .values("resourceinstanceidto")
                     .annotate(to_count=Count("resourceinstanceidto"))
+                    # ORDER BY is necessary for "pipelined" GROUP BY, see
+                    # https://use-the-index-luke.com/sql/sorting-grouping/indexed-group-by
+                    .order_by("resourceinstanceidto")
                 )
                 from_counts = (
                     models.ResourceXResource.objects.filter(
@@ -1025,6 +1028,7 @@ class Resource(models.ResourceInstance):
                     )
                     .values("resourceinstanceidfrom")
                     .annotate(from_count=Count("resourceinstanceidfrom"))
+                    .order_by("resourceinstanceidfrom")
                 )
 
                 total_relations_by_resource_id: dict[UUID:int] = defaultdict(int)

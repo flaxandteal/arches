@@ -6,7 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("models", "11499_add_editlog_resourceinstance_idx"),
+        ("models", "11869_rename_resxres_fields"),
         ("models", "9604_relational_data_model_handle_user_accounts"),
     ]
 

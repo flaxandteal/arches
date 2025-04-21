@@ -119,20 +119,19 @@ def _generate_urls_json():
         os.path.join(_get_base_path(), "..", "frontend_configuration", "urls.json")
     )
 
+    content = {
+        "_comment": "This file is auto-generated. Do not edit manually.",
+        **sorted_urls,
+    }
+
     try:
-        with open(
-            destination_path,
-            "r",
-        ) as file:
-            if json.load(file) != destination_path:
+        with open(destination_path, "r") as file:
+            if json.load(file) != content:
                 raise RuntimeError("App frontend configuration exists but does not match")
     except (IOError, FileNotFoundError):
         with open(destination_path, "w", encoding="utf-8") as file:
             json.dump(
-                {
-                    "_comment": "This file is auto-generated. Do not edit manually.",
-                    **sorted_urls,
-                },
+                content,
                 file,
                 indent=4,
             )

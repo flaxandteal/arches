@@ -50,7 +50,7 @@ var UserProfileManager = BaseManagerView.extend({
                     koType = ko.mapping.fromJS(type);
                     self.viewModel.notifTypeObservables.push(koType);
                 });
-            };
+            });
         };
         self.viewModel.getNotifTypes();
 

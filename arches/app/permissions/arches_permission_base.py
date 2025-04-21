@@ -785,13 +785,14 @@ def get_nodegroups_by_perm_for_user_or_group(
                 formatted_perms.append(perm)
 
     permitted_nodegroups = {}
-    checker: ObjectPermissionChecker = CachedObjectPermissionChecker(
-        user_or_group,
-        NodeGroup,
-    )
+    if user_or_group is not True:
+        checker: ObjectPermissionChecker = CachedObjectPermissionChecker(
+            user_or_group,
+            NodeGroup,
+        )
 
     for nodegroup in NodeGroup.objects.only("nodegroupid").all():
-        explicit_perms = checker.get_perms(nodegroup)
+        explicit_perms = set() if user_or_group is True else checker.get_perms(nodegroup)
 
         if len(explicit_perms):
             if ignore_perms:

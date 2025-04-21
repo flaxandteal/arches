@@ -58,7 +58,7 @@ class ArchesDefaultDenyPermissionFramework(ArchesPermissionBase):
         resources: list[str] | None = None,
     ):
         all = False
-        if user.is_superuser is True:
+        if user is True or user.is_superuser is True:
             if resources is not None:
                 return resources
             else:

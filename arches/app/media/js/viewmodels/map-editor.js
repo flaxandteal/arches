@@ -193,7 +193,7 @@ define([
                 if (featureCollection) {
                     featureCollection.features.forEach(function (feature) {
                         if (!feature.id) {
-                            feature.id = uuid.generate();
+                            feature.id = uuid.genV4();
                         }
                         feature.properties.nodeId = id;
                     });
@@ -438,7 +438,7 @@ define([
                             padding: padding,
                         });
                         geoJSON.features.forEach(function (feature) {
-                            feature.id = uuid.generate();
+                            feature.id = uuid.genV4();
                             if (!feature.properties) feature.properties = {};
                             feature.properties.nodeId = self.newNodeId;
                             self.draw.add(feature);
@@ -480,7 +480,6 @@ define([
                     displayControlsDefault: false,
                     modes: modes,
                 });
-                debugger;
                 map.addControl(self.draw);
                 self.draw.set({
                     type: "FeatureCollection",
@@ -654,7 +653,7 @@ define([
         var addSelectFeatures = function (features) {
             var featureIds = [];
             features.forEach(function (feature) {
-                feature.id = uuid.generate();
+                feature.id = uuid.genV4();
                 feature.properties = {
                     nodeId: self.newNodeId,
                 };
@@ -706,7 +705,7 @@ define([
                         padding: padding,
                     });
                     geoJSON.features.forEach(function (feature) {
-                        feature.id = uuid.generate();
+                        feature.id = uuid.genV4();
                         if (!feature.properties) feature.properties = {};
                         feature.properties.nodeId = nodeId;
                         self.draw.add(feature);
@@ -1102,7 +1101,7 @@ define([
                         var bufferFeature = getBufferFeature();
                         self.bufferResult({
                             type: "Feature",
-                            id: uuid.generate(),
+                            id: uuid.genV4(),
                             geometry: json,
                             properties: {
                                 nodeId: bufferFeature.properties.nodeId,

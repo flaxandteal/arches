@@ -22,6 +22,7 @@ import csv
 import json
 import uuid
 import datetime
+import logging
 from io import StringIO
 from time import time
 from copy import deepcopy
@@ -258,7 +259,10 @@ class ArchesFileReader(Reader):
                         ]:
                             update_or_create_tile(tile)
 
-                    resourceinstance.save(index=False)
+                    try:
+                        resourceinstance.save(index=False)
+                    except Exception as exc:
+                        logging.exception(exc)
 
                     if not prevent_indexing:
                         last_resource = self.save_descriptors_and_index(
@@ -582,7 +586,10 @@ class ArchesFileReader(Reader):
         if last_resource and (last_resource.graph_id == this_resource.graph_id):
             this_resource.descriptor_function = last_resource.descriptor_function
         this_resource.save_descriptors()
-        this_resource.index()
+        try:
+            this_resource.index()
+        except Exception as e:
+            print(e)
         return this_resource
 
     def import_all(self):

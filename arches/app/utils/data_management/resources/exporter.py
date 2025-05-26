@@ -35,6 +35,7 @@ class ResourceExporter(object):
     def export(
         self, graph_id=None, resourceinstanceids=None, languages: str = None, user=None
     ):
+        print("Exporting", graph_id, resourceinstanceids)
         resources = self.writer.write_resources(
             graph_id=graph_id,
             resourceinstanceids=resourceinstanceids,

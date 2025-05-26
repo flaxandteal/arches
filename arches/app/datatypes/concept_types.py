@@ -124,7 +124,11 @@ class BaseConceptDataType(BaseDataType):
         nodevalue = self.get_nodevalues(nodevalue)
         for valueid in nodevalue:
             value = self.get_value(valueid)
-            date_range = self.get_concept_dates(value.concept)
+            try:
+                date_range = self.get_concept_dates(value.concept)
+            except Exception as exc: # RMV
+                print("Temporary continuation for missing concept dates")
+                continue
             if date_range is not None:
                 min_date = ExtendedDateFormat(date_range["min_year"]).lower
                 max_date = ExtendedDateFormat(date_range["max_year"]).upper

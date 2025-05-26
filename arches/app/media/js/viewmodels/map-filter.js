@@ -195,16 +195,16 @@ define(['underscore', 'knockout'], function(_, ko) {
         };
 
         this.setupDraw = function() {
-            require(['mapbox-gl-draw'], (MapboxDraw) => {
+            import("@mapbox/mapbox-gl-draw").then((MapboxDraw) => {
                 var self = this;
                 if (!this.draw) {
-                    var modes = MapboxDraw.modes;
+                    var modes = MapboxDraw.default.modes;
                     modes.static = {
                         toDisplayFeatures: function(state, geojson, display) {
                             display(geojson);
                         }
                     };
-                    this.draw = new MapboxDraw({
+                    this.draw = new MapboxDraw.default({
                         displayControlsDefault: false,
                         modes: modes
                     });

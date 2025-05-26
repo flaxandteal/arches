@@ -172,11 +172,19 @@ class SKOSReader(object):
                                 }
                             )
                         elif predicate == SKOS.narrower:
-                            concept_id = self.generate_uuid_from_subject(
+                            top_concept_id = self.generate_uuid_from_subject(
                                 baseuuid, object
                             )
-                            raise Exception(
+                            # RMV this should be an exception (temporary)
+                            print(
                                 f'The Concept Scheme defines a "narrower" relation to a concept instead of using "hasTopConcept".  First concept with incorrect relation: {object}'
+                            )
+                            self.relations.append(
+                                {
+                                    "source": scheme_id,
+                                    "type": "hasTopConcept",
+                                    "target": top_concept_id,
+                                }
                             )
 
                 # RMV[PTW]: this seems to regularly be the case for collections.xml

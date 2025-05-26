@@ -193,7 +193,7 @@ define([
                 if (featureCollection) {
                     featureCollection.features.forEach(function (feature) {
                         if (!feature.id) {
-                            feature.id = uuid.genV4();
+                            feature.id = uuid.generate();
                         }
                         feature.properties.nodeId = id;
                     });
@@ -438,7 +438,7 @@ define([
                             padding: padding,
                         });
                         geoJSON.features.forEach(function (feature) {
-                            feature.id = uuid.genV4();
+                            feature.id = uuid.generate();
                             if (!feature.properties) feature.properties = {};
                             feature.properties.nodeId = self.newNodeId;
                             self.draw.add(feature);
@@ -653,7 +653,7 @@ define([
         var addSelectFeatures = function (features) {
             var featureIds = [];
             features.forEach(function (feature) {
-                feature.id = uuid.genV4();
+                feature.id = uuid.generate();
                 feature.properties = {
                     nodeId: self.newNodeId,
                 };
@@ -705,7 +705,7 @@ define([
                         padding: padding,
                     });
                     geoJSON.features.forEach(function (feature) {
-                        feature.id = uuid.genV4();
+                        feature.id = uuid.generate();
                         if (!feature.properties) feature.properties = {};
                         feature.properties.nodeId = nodeId;
                         self.draw.add(feature);
@@ -1101,7 +1101,7 @@ define([
                         var bufferFeature = getBufferFeature();
                         self.bufferResult({
                             type: "Feature",
-                            id: uuid.genV4(),
+                            id: uuid.generate(),
                             geometry: json,
                             properties: {
                                 nodeId: bufferFeature.properties.nodeId,

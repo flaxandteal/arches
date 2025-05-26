@@ -465,8 +465,8 @@ define([
         };
 
         var setupDraw = function (map) {
-            require(["mapbox-gl-draw"], (MapboxDraw) => {
-                var modes = MapboxDraw.modes;
+            import("@mapbox/mapbox-gl-draw").then((MapboxDraw) => {
+                var modes = MapboxDraw.default.modes;
                 modes.static = {
                     onSetup: function () {
                         this.setActionableState();
@@ -476,10 +476,11 @@ define([
                         display(geojson);
                     },
                 };
-                self.draw = new MapboxDraw({
+                self.draw = new MapboxDraw.default({
                     displayControlsDefault: false,
                     modes: modes,
                 });
+                debugger;
                 map.addControl(self.draw);
                 self.draw.set({
                     type: "FeatureCollection",

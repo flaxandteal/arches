@@ -165,7 +165,7 @@ class TimeFilter(BaseSearchFilter):
         node_graph_dict = {
             str(node.nodeid): str(node.graph_id)
             for node in date_nodes
-            if (self.user is True or self.request.user.has_perm("read_nodegroup", node.nodegroup))
+            if (self.user is True or self.user.has_perm("read_nodegroup", node.nodegroup))
         }
 
         date_cardxnodesxwidgets = CardXNodeXWidget.objects.filter(

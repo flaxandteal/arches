@@ -197,8 +197,12 @@ class GeojsonFeatureCollectionDataType(BaseDataType):
                 if self._feature_length_in_bytes(new_feature) < max_length:
                     features.append(new_feature)
                 else:
-                    chunks = self.split_geom(feature, max_length)
-                    features = features + chunks
+                    try:
+                        chunks = self.split_geom(feature, max_length)
+                        features = features + chunks
+                    except Exception as e:
+                        print("Temporary skip split_geom on exception", e)
+
 
         for feature in features:
             document["geometries"].append(

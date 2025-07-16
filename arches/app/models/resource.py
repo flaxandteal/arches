@@ -163,26 +163,42 @@ class Resource(models.ResourceInstance):
             self.descriptor_function = models.FunctionXGraph.objects.filter(
                 graph_id=self.graph_id, function__functiontype="primarydescriptors"
             ).select_related("function")
-
+        updated_descriptors = {} # create a dict of only the changing descriptors
         for lang in settings.LANGUAGES:
             language = self.get_descriptor_language({"language":lang[0]})
+            updated_descriptors[language] = {}
             if context:
                 context["language"] = language
             else:
                 context = {"language": language}
-
             for descriptor in descriptors:
                 if len(self.descriptor_function) == 1:
                     module = self.descriptor_function[0].function.get_class_module()()
-                    self.descriptors[language][descriptor] = module.get_primary_descriptor_from_nodes(
+                    # get the new value from the primary descriptor function
+                    updated_descriptor_value = module.get_primary_descriptor_from_nodes(
                         self, self.descriptor_function[0].config["descriptor_types"][descriptor], context, descriptor
                     )
-                    if descriptor == "name" and self.descriptors[language][descriptor] is not None:
-                        self.name[language] = self.descriptors[language][descriptor]
+                    # check for a valid string update and that the descriptor has changed
+                    if self.valid_descriptor_update(updated_descriptor_value) and updated_descriptor_value != self.descriptors.get(language, {}).get(descriptor, None):
+                        updated_descriptors[language][descriptor] = updated_descriptor_value
                 else:
-                    self.descriptors[language][descriptor] = None
-        
-        super(Resource, self).save()
+                    updated_descriptors[language] = None
+        # loop through each updated descriptor and update the resource and save
+        for language, descs in updated_descriptors.items():
+            for desc in descs:
+                self.descriptors[language][desc] = updated_descriptors[language][desc]
+                if desc == "name" and updated_descriptors.get(language, {}).get(desc, None) is not None:
+                    self.name[language] = updated_descriptors[language][desc]
+                print("I'm SAVING with: ", updated_descriptors[language][desc])
+            super(Resource, self).save()
+
+    def valid_descriptor_update(self, descriptor_value):
+        """
+        Checks for an updated string value for the descriptor, excluding
+        Undefined and values encapsulated by < >
+        """
+        return bool(descriptor_value and descriptor_value != "Undefined" and not descriptor_value.startswith('<'))
+
 
     def displaydescription(self, context=None):
         return self.get_descriptor("description", context)

@@ -42,7 +42,8 @@ from arches.app.search.elasticsearch_dsl_builder import Query, Bool, Terms
 from arches.app.search.mappings import TERMS_INDEX
 from arches.app.datatypes.datatypes import DataTypeFactory
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)# Set up a logger for this module.
+
 
 
 class Tile(models.TileModel):
@@ -509,6 +510,7 @@ class Tile(models.TileModel):
 
             resource = Resource.objects.get(pk=self.resourceinstance_id)
             resource.save_descriptors(context={'tile': self})
+            resource = Resource.objects.get(pk=self.resourceinstance_id)
 
             if index:
                 self.index(resource=resource)

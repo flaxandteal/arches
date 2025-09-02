@@ -1,6 +1,7 @@
 import os
 import re
 import tomllib
+import logging
 from importlib.metadata import PackageNotFoundError, requires
 from pathlib import Path
 
@@ -25,7 +26,10 @@ class ArchesAppConfig(AppConfig):
         import arches.app.signals
 
         os.environ.setdefault("DJANGO_SETTINGS_MODULE", "arches.settings")
-        generate_frontend_configuration()
+        try:
+            generate_frontend_configuration()
+        except PermissionError:
+            logging.warn("Could not write frontend configuration, trusting that it has been correctly written already")
 
 
 if settings.FILE_TYPE_CHECKING not in (None, "lenient", "strict"):

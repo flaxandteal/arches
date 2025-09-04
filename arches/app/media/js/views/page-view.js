@@ -184,7 +184,7 @@ define([
             ko.applyBindings(this.viewModel);
             this.viewModel.getNotifications();
 
-            $('[data-toggle="tooltip"]').tooltip();
+            // PTW: CVE-2018-14042. $('[data-CVE-2018-14042=""]').tooltip();
 
             backToTop.scrollToTopHandler();
         }

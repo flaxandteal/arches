@@ -15,11 +15,11 @@ var App = function() {
     });
 
     /*Tooltips*/
-    jQuery('.tooltips').tooltip();
-    jQuery('.tooltips-show').tooltip('show');
-    jQuery('.tooltips-hide').tooltip('hide');
-    jQuery('.tooltips-toggle').tooltip('toggle');
-    jQuery('.tooltips-destroy').tooltip('destroy');
+    // PTW: removing for CVE-2018-14042: jQuery('.tooltips').tooltip();
+    // PTW: removing for CVE-2018-14042: jQuery('.tooltips-show').tooltip('show');
+    // PTW: removing for CVE-2018-14042: jQuery('.tooltips-hide').tooltip('hide');
+    // PTW: removing for CVE-2018-14042: jQuery('.tooltips-toggle').tooltip('toggle');
+    // PTW: removing for CVE-2018-14042: jQuery('.tooltips-destroy').tooltip('destroy');
 
     /*Popovers*/
     jQuery('.popovers').popover();

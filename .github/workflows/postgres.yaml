@@ -5,7 +5,7 @@ run-name: Build Arches PostGIS
 on: [push]
 env:
   ARCHES_BASE: flaxandteal/arches-postgis
-  ARCHES_VERSION: "7.5-dev"
+  ARCHES_VERSION: "7.6.4"
   REGISTRY: ghcr.io
 jobs:
   Build-Arches:

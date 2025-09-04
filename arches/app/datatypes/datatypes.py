@@ -1491,14 +1491,17 @@ class GeojsonFeatureCollectionDataType(BaseDataType):
         }
 
     def after_update_all(self, tile=None):
-        with connection.cursor() as cursor:
-            if tile is not None:
-                cursor.execute(
-                    "SELECT * FROM refresh_tile_geojson_geometries(%s);",
-                    [tile.pk],
-                )
-            else:
-                cursor.execute("SELECT * FROM refresh_geojson_geometries();")
+        try:
+            with connection.cursor() as cursor:
+                if tile is not None:
+                    cursor.execute(
+                        "SELECT * FROM refresh_tile_geojson_geometries(%s);",
+                        [tile.pk],
+                    )
+                else:
+                    cursor.execute("SELECT * FROM refresh_geojson_geometries();")
+        except Exception as e:
+            print("Temporary refresh geojson exception catching", e)
 
     def default_es_mapping(self):
         mapping = {

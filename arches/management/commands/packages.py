@@ -296,6 +296,7 @@ class Command(BaseCommand):
                 options["graphs"],
                 options["single_file"],
                 options["languages"],
+                options["source"],
             )
 
         if options["operation"] == "import_reference_data":
@@ -1084,21 +1085,24 @@ class Command(BaseCommand):
         management.call_command("es", operation="delete_indexes")
 
     def export_business_data(
-        self, data_dest=None, file_format=None, config_file=None, graphid=None, single_file=False, languages: str = None
+        self, data_dest=None, file_format=None, config_file=None, graphid=None, single_file=False, languages: str = None, resource_id = None,
     ):
         graphids = []
-        if graphid is False and file_format == "json":
-            graphids = [
-                str(graph.graphid)
-                for graph in models.GraphModel.objects.filter(isresource=True).exclude(pk=settings.SYSTEM_SETTINGS_RESOURCE_MODEL_ID)
-            ]
-        if graphid is False and file_format != "json":
-            utils.print_message(
-                "Exporting data for all graphs is currently only supported for the json format. Please specify a graphid with the -g flag."
-            )
-            sys.exit()
+        if not resource_id:
+            if graphid is False and file_format == "json":
+                graphids = [
+                    str(graph.graphid)
+                    for graph in models.GraphModel.objects.filter(isresource=True).exclude(pk=settings.SYSTEM_SETTINGS_RESOURCE_MODEL_ID)
+                ]
+            if graphid is False and file_format != "json":
+                utils.print_message(
+                    "Exporting data for all graphs is currently only supported for the json format. Please specify a graphid with the -g flag."
+                )
+                sys.exit()
         if graphid:
             graphids.append(graphid)
+        else:
+            graphids.append(None)
         if os.path.exists(data_dest):
             safe_characters = (" ", ".", "_", "-")
             for graphid in graphids:
@@ -1106,7 +1110,7 @@ class Command(BaseCommand):
                     resource_exporter = ResourceExporter(
                         file_format, configs=config_file, single_file=single_file
                     )  # New exporter needed for each graphid, else previous data is appended with each subsequent graph
-                    data = resource_exporter.export(graph_id=graphid, resourceinstanceids=None, languages=languages)
+                    data = resource_exporter.export(graph_id=graphid, resourceinstanceids=[resource_id] if resource_id else None, languages=languages)
                     for file in data:
                         with open(
                             os.path.join(

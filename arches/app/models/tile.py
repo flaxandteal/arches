@@ -433,7 +433,10 @@ class Tile(models.TileModel):
                 datatype.pre_tile_save(self, nodeid)
             self.__preSave(request, context=context)
             self.check_for_missing_nodes()
-            self.check_for_constraint_violation()
+            try:
+                self.check_for_constraint_violation()
+            except models.CardModel.DoesNotExist:
+                ... # If no card model, then no constraint.
 
             creating_new_tile = models.TileModel.objects.filter(pk=self.tileid).exists() is False
             edit_type = "tile create" if (creating_new_tile is True) else "tile edit"

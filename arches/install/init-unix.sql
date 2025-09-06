@@ -1,4 +1,4 @@
-CREATE DATABASE template_postgis WITH ENCODING 'UTF8' LC_COLLATE='en-US' LC_CTYPE='en-US';
+CREATE DATABASE template_postgis;
 UPDATE pg_database SET datistemplate='true' WHERE datname='template_postgis';
 
 \c template_postgis

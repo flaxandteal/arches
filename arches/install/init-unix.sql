@@ -1,4 +1,3 @@
-CREATE DATABASE template_postgis;
 UPDATE pg_database SET datistemplate='true' WHERE datname='template_postgis';
 
 \c template_postgis

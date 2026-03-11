@@ -23,4 +23,24 @@ sql_items = [
         reverse_sql="drop function __arches_get_json_data_for_view;",
         replace=True,
     ),
+    SQLItem(
+        "__arches_get_nodevalue_label",
+        format_file_into_sql("__arches_get_nodevalue_label.sql", "sql/functions"),
+        reverse_sql="drop function __arches_get_nodevalue_label;",
+        replace=True,
+    ),
+    SQLItem(
+        "__arches_get_node_display_value",
+        format_file_into_sql("__arches_get_node_display_value.sql", "sql/functions"),
+        reverse_sql="drop function __arches_get_node_display_value;",
+        replace=True,
+    ),
+    SQLItem(
+        "__arches_check_tile_cardinality_violation_for_load",
+        format_file_into_sql(
+            "__arches_check_tile_cardinality_violation_for_load.sql", "sql/procedures"
+        ),
+        reverse_sql="drop procedure __arches_check_tile_cardinality_violation_for_load;",
+        replace=True,
+    ),
 ]

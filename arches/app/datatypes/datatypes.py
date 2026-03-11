@@ -16,6 +16,7 @@ from django.core.files import File
 from django.core.files.images import get_image_dimensions
 from django.core.files.storage import default_storage
 from django.db import connection
+from django.db.models import Q
 from django.utils.translation import get_language
 from django.utils.translation import gettext as _
 
@@ -55,7 +56,7 @@ from arches.app.utils.file_validator import FileValidator
 from arches.app.utils.i18n import get_localized_value
 from arches.app.utils.module_importer import get_class_from_modulename
 from arches.app.utils.permission_backend import user_is_resource_reviewer
-from arches.app.utils.string_utils import str_to_bool
+from arches.app.utils.string_utils import str_to_bool, deserialize_json_like_string
 
 # do not delete, used by module importer
 from .core import *
@@ -684,6 +685,14 @@ class BooleanDataType(BaseDataType):
 
 
 class DateDataType(BaseDataType):
+    # convert javascript date formats (node config dateFormat) to python date formats
+    date_format_lookup = {
+        "YYYY-MM-DD HH:mm:ssZ": "%Y-%m-%d %H:%M:%S%z",
+        "YYYY-MM-DD": "%Y-%m-%d",
+        "YYYY-MM": "%Y-%m",
+        "YYYY": "%Y",
+    }
+
     def validate(
         self,
         value,
@@ -708,6 +717,17 @@ class DateDataType(BaseDataType):
                 errors.append(error_message)
         return errors
 
+    def clean(self, tile, nodeid):
+        super().clean(tile, nodeid)
+        if tile.data[nodeid] == "Date of Data Entry":
+            cnw = models.CardXNodeXWidget.objects.get(node__nodeid=nodeid)
+            if cnw.config.get("dateFormat", None):
+                tile.data[nodeid] = datetime.now().strftime(
+                    self.date_format_lookup[cnw.config.get("dateFormat")]
+                )
+            else:
+                tile.data[nodeid] = ""
+
     def get_valid_date_format(self, value):
         valid = False
         valid_date_format = ""
@@ -728,9 +748,11 @@ class DateDataType(BaseDataType):
         except:
             # The .astimezone function throws an error on Windows for dates before 1970
             value = self.backup_astimezone(value)
-        return value.isoformat(timespec="milliseconds")
+        return value.strftime("%Y-%m-%d %H:%M:%S%z")
 
     def transform_value_for_tile(self, value, **kwargs):
+        date_format = kwargs.get("dateFormat", None)
+        valid_date_format = None
         value = None if value == "" else value
         if value is not None:
             if isinstance(value, list):
@@ -740,14 +762,25 @@ class DateDataType(BaseDataType):
                     # a year before 1000 but not BCE
                     value = value.zfill(4)
                 valid_date_format, valid = self.get_valid_date_format(value)
-                if valid:
+                if not valid:
+                    valid_date_format = settings.DATE_IMPORT_EXPORT_FORMAT
+                try:
                     value = datetime.strptime(value, valid_date_format)
-                else:
-                    value = datetime.strptime(value, settings.DATE_IMPORT_EXPORT_FORMAT)
-            if isinstance(value, date):
+                except:
+                    return value
+            # Use type() instead of isinstance() to distinguish between date and datetime
+            elif type(value) is date:
                 value = datetime(value.year, value.month, value.day)
 
-        return self.set_timezone(value)
+        if date_format and date_format in self.date_format_lookup:
+            value = value.strftime(self.date_format_lookup[date_format])
+        elif (
+            valid_date_format and valid_date_format in self.date_format_lookup.values()
+        ):
+            value = value.strftime(valid_date_format)
+        else:
+            value = self.set_timezone(value)
+        return value
 
     def backup_astimezone(self, dt):
         def same_calendar(year):
@@ -781,19 +814,6 @@ class DateDataType(BaseDataType):
             dt.replace(year=same_calendar(dt.year)).astimezone().replace(year=dt.year)
         )
         return converted_dt
-
-    def transform_export_values(self, value, *args, **kwargs):
-        if value is not None:
-            valid_date_format, valid = self.get_valid_date_format(value)
-            if valid:
-                value = datetime.strptime(value, valid_date_format).strftime(
-                    settings.DATE_IMPORT_EXPORT_FORMAT
-                )
-            else:
-                logger.warning(
-                    _("{value} is an invalid date format").format(**locals())
-                )
-            return value
 
     def add_missing_colon_to_timezone(self, value):
         """
@@ -1134,7 +1154,7 @@ class FileListDataType(BaseDataType):
 
         try:
             config = node.config
-            limit = config["maxFiles"]
+            limit = config["maxFiles"] if "maxFiles" in config.keys() else None
             max_size = config["maxFileSize"] if "maxFileSize" in config.keys() else None
 
             images_only = config.get("imagesOnly", False)
@@ -1166,17 +1186,13 @@ class FileListDataType(BaseDataType):
                             }
                         )
 
-            if (
-                value is not None
-                and config["activateMax"] is True
-                and len(value) > limit
-            ):
+            if value is not None and limit is not None and len(value) > limit:
                 message = _(
                     "This node has a limit of {0} files. Please reduce files.".format(
                         limit
                     )
                 )
-                title = _("Exceed Maximun Number of Files")
+                title = _("Exceeded Maximum Number of Files")
                 errors.append({"type": "ERROR", "message": message, "title": title})
 
             if max_size is not None:
@@ -1217,23 +1233,34 @@ class FileListDataType(BaseDataType):
             tile.data[nodeid] = None
 
     def append_to_document(self, document, nodevalue, nodeid, tile, provisional=False):
+        def add_to_document(f, provisional):
+            metadata_fields = ["title", "description", "altText", "attribution"]
+            val = {
+                "string": f["name"],
+                "nodegroup_id": tile.nodegroup_id,
+                "provisional": provisional,
+            }
+            document["strings"].append(val)
+            for field in metadata_fields:
+                if field in f:
+                    for lang in f[field].keys():
+                        if f[field][lang]["value"]:
+                            document["strings"].append(
+                                {
+                                    "string": f[field][lang]["value"],
+                                    "language": lang,
+                                    "nodegroup_id": tile.nodegroup_id,
+                                    "provisional": provisional,
+                                }
+                            )
+
         try:
             for f in tile.data[str(nodeid)]:
-                val = {
-                    "string": f["name"],
-                    "nodegroup_id": tile.nodegroup_id,
-                    "provisional": provisional,
-                }
-                document["strings"].append(val)
+                add_to_document(f, provisional=provisional)
         except (KeyError, TypeError):
-            for k, pe in tile.provisionaledits.items():
+            for pe in tile.provisionaledits.values():
                 for f in pe["value"][nodeid]:
-                    val = {
-                        "string": f["name"],
-                        "nodegroup_id": tile.nodegroup_id,
-                        "provisional": provisional,
-                    }
-                    document["strings"].append(val)
+                    add_to_document(f, provisional=provisional)
 
     def append_search_filters(self, value, node, query, request):
         try:
@@ -1370,20 +1397,59 @@ class FileListDataType(BaseDataType):
                                 compatible_renderers.append(renderer["id"])
         return compatible_renderers
 
+    def _get_bulk_import_file_path(self, file_path, loadid=None):
+        if file_path and os.sep in file_path:
+            return Path(file_path).parent
+        else:
+            return Path(settings.UPLOADED_FILES_DIR) / "tmp" / loadid
+
     def transform_value_for_tile(self, value, **kwargs):
         """
-        Accepts a comma delimited string of file paths as 'value' to create a file datatype value
-        with corresponding file record in the files table for each path. Only the basename of each path is used, so
-        the accuracy of the full path is not important. However the name of each file must match the name of a file in
-        the directory from which Arches will request files. By default, this is the directory in a project as defined
-        in settings.UPLOADED_FILES_DIR.
-
+        The 'value' argument can be a comma delimited string of file paths,
+        a dictionary, or a list of dictionaries with the following properties:
+        {
+            "name": "",
+            "altText": "",
+            "attribution": "",
+            "description": "",
+            "title": ""
+        }
+        Creates a file datatype value with corresponding file record in the files table for each path.
+        Only the basename of each path is used, so the accuracy of the full path is not important.
+        However the name of each file must match the name of a file in the directory from which Arches will request files.
+        By default, this is the directory in a project as defined in settings.UPLOADED_FILES_DIR.
         """
+
+        if not value:
+            return value
 
         mime = MimeTypes()
         tile_data = []
-        source_path = kwargs.get("path")
-        for file_path in [filename.strip() for filename in value.split(",")]:
+        bulk_import = kwargs.get("bulk_import", False)
+
+        # check if value is a string (csv) or a dictionay (a list of dictionaries)
+        try:
+            value = deserialize_json_like_string(value)
+        except json.decoder.JSONDecodeError:
+            pass
+
+        # the data can be a string, a dictionary or a list of dictionaries
+        if isinstance(value, str):
+            files = [filename.strip() for filename in value.split(",")]
+        elif isinstance(value, list) and all(
+            isinstance(file_info, dict) for file_info in value
+        ):
+            files = value
+        elif isinstance(value, dict):
+            files = [value]
+        else:
+            raise TypeError(value)
+
+        for file_info in files:
+            file_path = (
+                file_info if isinstance(file_info, str) else file_info.get("name")
+            )
+            original_file_path = file_path
             tile_file = {}
             try:
                 file_stats = os.stat(file_path)
@@ -1397,7 +1463,11 @@ class FileListDataType(BaseDataType):
             tile_file["type"] = "" if tile_file["type"] is None else tile_file["type"]
             file_path = "%s/%s" % (settings.UPLOADED_FILES_DIR, str(tile_file["name"]))
             tile_file["file_id"] = str(uuid.uuid4())
-            if source_path:
+            if bulk_import:
+                source_path = self._get_bulk_import_file_path(
+                    original_file_path, kwargs.get("loadid")
+                )
+
                 source_file = os.path.join(source_path, tile_file["name"])
                 fs = default_storage
                 try:
@@ -1427,6 +1497,25 @@ class FileListDataType(BaseDataType):
             compatible_renderers = self.get_compatible_renderers(tile_file)
             if len(compatible_renderers) == 1:
                 tile_file["renderer"] = compatible_renderers[0]
+
+            # if files include metadata, add metadata to the tile_file
+            localized_metadata_keys = {"altText", "attribution", "description", "title"}
+            languages = models.Language.objects.all()
+
+            if isinstance(file_info, dict):
+                for key in localized_metadata_keys:
+                    tile_file[key] = {}
+                    val = file_info.get(key, "")
+                    for lang in languages:
+                        metadata_value = (
+                            val
+                            if isinstance(val, str)
+                            else val.get(lang.code, {}).get("value", "")
+                        )
+                        tile_file[key][lang.code] = {
+                            "value": metadata_value,
+                            "direction": lang.default_direction,
+                        }
             tile_data.append(tile_file)
         return json.loads(json.dumps(tile_data))
 
@@ -2136,7 +2225,7 @@ class ResourceInstanceDataType(BaseDataType):
                 try:
                     resourceid = resourceXresource["resourceId"]
                     related_resource = Resource.objects.get(pk=resourceid)
-                    displayname = related_resource.displayname()
+                    displayname = related_resource.displayname(kwargs)
                     if displayname is not None:
                         items.append(displayname)
                 except (TypeError, KeyError):
@@ -2525,3 +2614,84 @@ class AnnotationDataType(BaseDataType):
             }
         }
         return mapping
+
+
+class LanguageDataType(BaseDataType):
+    def __init__(self, model=None):
+        super(LanguageDataType, self).__init__(model=model)
+        self.language_lookup = {}  # {code or name: Language model}
+
+    def validate(
+        self,
+        value,
+        row_number=None,
+        source="",
+        node=None,
+        nodeid=None,
+        strict=False,
+        **kwargs,
+    ):
+        errors = []
+        if value is not None:
+            found_language = self.lookup_language(value)
+            if not found_language:
+                message = _(
+                    "The language '{0}' is not a valid language code or name.".format(
+                        value
+                    )
+                )
+                title = _("Invalid Language Datatype")
+                error_message = self.create_error_message(
+                    value, source, row_number, message, title
+                )
+                errors.append(error_message)
+        return errors
+
+    def transform_value_for_tile(self, value, **kwargs):
+        if value is not None:
+            found_language = self.lookup_language(value)
+            if found_language:
+                return found_language.code
+        return None
+
+    # TODO: add RDF export method that uses this value as language tag for literals
+    # likely a tile method
+    # def transform_export_values(self, value, *args, **kwargs):
+    #     return super().transform_export_values(value, *args, **kwargs)
+
+    def lookup_language(self, value) -> models.Language | None:
+        if type(value) == list and len(value) > 0:
+            value = value[0]  # Arches with i18n may send list of values
+        if not value:
+            return None
+        if value in self.language_lookup:
+            return self.language_lookup[value]
+        language = models.Language.objects.filter(Q(code=value) | Q(name=value)).first()
+        if language:
+            self.language_lookup[language.code] = language
+            self.language_lookup[language.name] = language
+            return language
+        return None
+
+    def get_display_value(self, tile, node, **kwargs):
+        data = self.get_tile_data(tile)
+        if data:
+            language = self.lookup_language(data[str(node.nodeid)])
+            if language:
+                return language.name
+        return ""
+
+    def append_search_filters(self, value, node, query, request):
+        try:
+            operation = value["op"]
+            if operation == "null" or operation == "not_null":
+                self.append_null_search_filters(value, node, query, request)
+            elif value["val"] != "":
+                field = f"tiles.data.{str(node.pk)}"
+                match_query = Term(field=field, term=value["val"])
+                if "!" not in operation:
+                    query.must(match_query)
+                else:
+                    query.must_not(match_query)
+        except KeyError:
+            pass

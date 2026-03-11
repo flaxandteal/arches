@@ -307,6 +307,8 @@ class Graph(models.GraphModel):
 
         if edge.pk is None:
             edge.pk = uuid.uuid4()
+        if isinstance(edge.pk, str):
+            edge.pk = uuid.UUID(edge.pk)
         if self.ontology is None:
             edge.ontologyproperty = None
         self.edges[edge.pk] = edge
@@ -318,6 +320,8 @@ class Graph(models.GraphModel):
     def add_card_contraint(self, constraint, card):
         constraint_model = models.ConstraintModel()
         constraint_model.constraintid = constraint.get("constraintid", None)
+        if isinstance(constraint_model.pk, str):
+            constraint_model.pk = uuid.UUID(constraint_model.pk)
         constraint_model.uniquetoallinstances = constraint.get(
             "uniquetoallinstances", False
         )
@@ -366,6 +370,8 @@ class Graph(models.GraphModel):
 
         if card.pk is None:
             card.pk = uuid.uuid4()
+        if isinstance(card.pk, str):
+            card.pk = uuid.UUID(card.pk)
 
         self.cards[card.pk] = card
         self.has_unpublished_changes = True
@@ -385,6 +391,8 @@ class Graph(models.GraphModel):
             function_x_graph = models.FunctionXGraph(**function_x_graph.copy())
 
         function_x_graph.graph = self
+        if isinstance(function_x_graph.pk, str):
+            function_x_graph.pk = uuid.UUID(function_x_graph.pk)
 
         self.functions_x_graphs.append(function_x_graph)
         self.has_unpublished_changes = True
@@ -402,6 +410,9 @@ class Graph(models.GraphModel):
 
         if not isinstance(spatial_view, models.SpatialView):
             spatial_view = models.SpatialView(**spatial_view.copy())
+
+        if isinstance(spatial_view.pk, str):
+            spatial_view.pk = uuid.UUID(spatial_view.pk)
 
         self._spatial_views.append(spatial_view)
         self.has_unpublished_changes = True
@@ -1609,8 +1620,10 @@ class Graph(models.GraphModel):
         nodegroups = self.get_nodegroups(force_recalculation=True)
         error_query = models.LoadErrors.objects.filter(
             Q(nodegroup__in=nodegroups) | Q(node__in=self.nodes.values())
-        )
-        staging_query = models.LoadStaging.objects.filter(nodegroup__in=nodegroups)
+        ).only("node", "nodegroup")
+        staging_query = models.LoadStaging.objects.filter(
+            nodegroup__in=nodegroups
+        ).only("nodegroup")
         error_objs = set(error_query)
         staging_objs = set(staging_query)
         error_query.update(nodegroup=None, node=None)
@@ -1627,13 +1640,19 @@ class Graph(models.GraphModel):
             valid_stagings = {
                 obj for obj in staging_objs if obj.nodegroup_id in all_nodegroup_ids
             }
-            models.LoadErrors.objects.bulk_update(valid_errors, fields=["nodegroup"])
-            models.LoadStaging.objects.bulk_update(valid_stagings, fields=["nodegroup"])
+            models.LoadErrors.objects.bulk_update(
+                valid_errors, fields=["nodegroup"], batch_size=500
+            )
+            models.LoadStaging.objects.bulk_update(
+                valid_stagings, fields=["nodegroup"], batch_size=500
+            )
 
             # Restore the node references that still exist.
             all_node_ids = models.Node.objects.values_list("pk", flat=True)
             valid_errors = {obj for obj in error_objs if obj.node_id in all_node_ids}
-            models.LoadErrors.objects.bulk_update(valid_errors, fields=["node"])
+            models.LoadErrors.objects.bulk_update(
+                valid_errors, fields=["node"], batch_size=500
+            )
 
     def update_permissions_from_serialized_graph(self, serialized_graph):
         if (

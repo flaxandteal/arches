@@ -98,9 +98,9 @@ class TileExcelImporter(BaseImportModule):
                 datatype_instance = self.datatype_factory.get_instance(datatype)
                 source_value = row_details[key]
                 config = node_details["config"]
-                config["path"] = os.path.join(
-                    settings.UPLOADED_FILES_DIR, "tmp", self.loadid
-                )
+
+                config["bulk_import"] = True
+
                 config["loadid"] = self.loadid
                 try:
                     config["nodeid"] = nodeid
@@ -136,13 +136,16 @@ class TileExcelImporter(BaseImportModule):
                         ),
                     )
 
-                tile_value[nodeid] = {
-                    "value": value,
-                    "valid": valid,
-                    "source": source_value,
-                    "notes": error_message,
-                    "datatype": datatype,
-                }
+                if value is not None:
+                    tile_value[nodeid] = {
+                        "value": value,
+                        "valid": valid,
+                        "source": source_value,
+                        "notes": error_message,
+                        "datatype": datatype,
+                    }
+                else:
+                    tile_value[nodeid] = None
             except KeyError:
                 pass
 

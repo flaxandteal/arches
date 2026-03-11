@@ -3,6 +3,7 @@ import json
 import logging
 import math
 import os
+from pathlib import Path
 import uuid
 import zipfile
 from openpyxl import load_workbook
@@ -351,7 +352,7 @@ class BaseImportModule:
                             ] = self.cumulative_files_size
 
                             default_storage.save(
-                                os.path.join(self.temp_dir, file.filename),
+                                Path(self.temp_dir) / Path(file.filename).name,
                                 File(zip_ref.open(file)),
                             )
         elif content.name.split(".")[-1] == "xlsx":
@@ -374,8 +375,8 @@ class BaseImportModule:
                     workbook = load_workbook(filename=opened_file, read_only=True)
                     self.validate_uploaded_file(workbook)
                     has_valid_excel_file = True
-                except:
-                    pass
+                except Exception as e:
+                    logger.error(e, exc_info=True)
                 else:
                     opened_file.close()
         if not has_valid_excel_file:

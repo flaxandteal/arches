@@ -253,7 +253,7 @@ class GeojsonFeatureCollectionDataType(BaseDataType):
         )
         num_points = len(coordinates)
         num_chunks = self._feature_length_in_bytes(feature) / max_feature_in_bytes
-        max_points = int(num_points / num_chunks)
+        max_points = max(int(num_points / num_chunks), 8)
 
         with connection.cursor() as cur:
             cur.execute(

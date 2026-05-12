@@ -59,3 +59,65 @@ Our general release cycle will typically be a functional release (either major i
 - Feature releases (with the exception of stable releases) will be supported only until the next feature release. After that users are expected to upgrade to the latest release on [pypi.python.org](https://pypi.python.org/pypi/arches)
 
 #### For details regarding future releases, see the [feature roadmap](https://github.com/archesproject/arches-roadmap).
+
+---
+
+## Flax & Teal Patched Build
+
+This branch (`fat_dev/8.1.x`) tracks `upstream/dev/8.1.x` with additional patches applied by Flax & Teal. It is the basis for the `ghcr.io/flaxandteal/arches-base` Docker image.
+
+### Applied patches
+
+| Area | Description | Upstream commit/PR |
+|---|---|---|
+| Docker | Ubuntu 18.04→24.04, Python 3.8→3.12, Node 10→20 | `docker/8.1` branch |
+| Docker | Modern NodeSource GPG keyring setup | `docker/8.1` branch |
+| Docker | `pip install --prefer-binary` to avoid source builds | `docker/8.1` branch |
+| Docker | Install `git` during npm build stage | `docker/8.1` branch |
+| CI | Tag-triggered workflow to build and push `arches-base` image | `docker/8.1` branch |
+| PostgreSQL | Remove `CREATE DATABASE template_postgis` from `init-unix.sql` (already provided by `postgis/postgis` image) | `docker/8.1` branch |
+| App startup | Catch `PermissionError` from `generate_frontend_configuration()` so the app starts under a read-only filesystem | `docker/8.1` branch (`95873a9`) |
+| Dependencies | `psycopg2` → `psycopg2-binary` (bundles libpq, no runtime `libpq-dev` needed) | `docker/8.1` branch |
+
+### Docker image tagging
+
+Images are built automatically when a tag matching `v*` is pushed. Tags follow the convention:
+
+```
+v<arches-version>-v<n>
+```
+
+- `<arches-version>` — the upstream Arches version this build is based on (matches `version` in `pyproject.toml`, e.g. `8.1.3`)
+- `v<n>` — an internal increment starting at `v1`, increased whenever patches are added or changed without an upstream version bump
+
+Examples:
+
+| Tag | Meaning |
+|---|---|
+| `v8.1.3-v1` | First patched build based on Arches 8.1.3 |
+| `v8.1.3-v2` | Second patched build on the same upstream version (e.g. an additional fix applied) |
+| `v8.1.4-v1` | First patched build after upstream bumped to 8.1.4 |
+
+To trigger a build from a specific commit:
+
+```bash
+git tag v8.1.3-fat1 <commit-sha>   # omit <commit-sha> to tag HEAD
+git push origin v8.1.3-v1
+```
+
+The Arches version is embedded in the image as a label (`org.opencontainers.image.version`) and can be inspected without pulling:
+
+```bash
+docker inspect ghcr.io/flaxandteal/arches-base:v8.1.3-v1 | jq '.[0].Config.Labels'
+```
+
+### Staying in sync with upstream
+
+`fat_dev/8.1.x` is kept up to date with `upstream/dev/8.1.x`. Before tagging a new build, pull the latest upstream changes:
+
+```bash
+git fetch upstream
+git merge upstream/dev/8.1.x
+```
+
+If upstream introduces changes that conflict with the patches above, resolve them and update this table accordingly.

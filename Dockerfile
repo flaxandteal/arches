@@ -111,6 +111,15 @@ WORKDIR ${ARCHES_ROOT}
 RUN . ../ENV/bin/activate \
     && pip install -e . --group dev --prefer-binary
 
+# Pre-bake the bulky, stable static (arches-core node_modules vendor + core
+# media) into the base image.
+ENV ARCHES_BASE_STATIC=/static_base
+RUN . ../ENV/bin/activate \
+    && DJANGO_MODE=STATIC \
+       DJANGO_SECRET_KEY=base-build-dummy \
+       STATIC_ROOT=${ARCHES_BASE_STATIC} \
+       python manage.py collectstatic --noinput --skip-checks
+
 # Set default workdir
 WORKDIR ${ARCHES_ROOT}
 

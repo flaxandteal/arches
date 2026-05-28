@@ -8,7 +8,8 @@ ENV ARCHES_ROOT=${WEB_ROOT}/arches
 ENV WHEELS=/wheels
 ENV PYTHONUNBUFFERED=1
 
-RUN apt-get update && apt-get install -y make software-properties-common
+RUN apt-get update && apt-get install -y --no-install-recommends make software-properties-common \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 FROM base as wheelbuilder
 
@@ -33,9 +34,9 @@ RUN set -ex \
         dos2unix \
         " \
     && apt-get update -y \
-    && apt-get install -y --no-install-recommends $BUILD_DEPS
-
-RUN apt-get install -y python3-pip
+    && apt-get install -y --no-install-recommends $BUILD_DEPS \
+    && apt-get install -y --no-install-recommends python3-pip \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN pip wheel --no-cache-dir gunicorn \
     && pip wheel --no-cache-dir django-auth-ldap
@@ -53,10 +54,6 @@ RUN mkdir ${WEB_ROOT}
 COPY --from=wheelbuilder ${WHEELS} /wheels
 
 # Install packages required to run Arches
-# Note that the ubuntu/debian package for libgdal1-dev pulls in libgdal1i, which is built
-# with everything enabled, and so, it has a huge amount of dependancies (everything that GDAL
-# support, directly and indirectly pulling in mysql-common, odbc, jp2, perl! ... )
-# a minimised build of GDAL could remove several hundred MB from the container layer.
 RUN set -ex \
     && RUN_DEPS=" \
         libgdal-dev \
@@ -76,14 +73,16 @@ RUN set -ex \
     && add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -sc)-pgdg main" \
     && apt-get update -y \
     && apt-get install -y --no-install-recommends $RUN_DEPS \
-    && apt-get install -y nodejs
+    && apt-get install -y --no-install-recommends nodejs git \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install npm components
 COPY ./package.json ${ARCHES_ROOT}/package.json
 WORKDIR ${ARCHES_ROOT}
 RUN mkdir -p ${ARCHES_ROOT}/node_modules
-RUN apt-get install -y git
-RUN npm install
+RUN npm install \
+    && npm cache clean --force \
+    && rm -rf /root/.npm /tmp/*
 
 ## Install virtualenv
 WORKDIR ${WEB_ROOT}
@@ -92,14 +91,13 @@ RUN mv ${WHEELS}/entrypoint.sh entrypoint.sh
 
 RUN python3.12 -m venv ENV \
     && . ENV/bin/activate \
-    && pip install --upgrade pip \
-    && pip install wheel setuptools requests \
-    && pip install rjsmin==1.2.0 MarkupSafe==2.0.0 \
-    && pip install requests \
-    && pip install -f ${WHEELS} django-auth-ldap \
-    && pip install -f ${WHEELS} gunicorn \
-    && rm -rf ${WHEELS} \
-    && rm -rf /root/.cache/pip/*
+    && pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir wheel setuptools requests \
+    && pip install --no-cache-dir rjsmin==1.2.0 MarkupSafe==2.0.0 \
+    && pip install --no-cache-dir requests \
+    && pip install --no-cache-dir -f ${WHEELS} django-auth-ldap \
+    && pip install --no-cache-dir -f ${WHEELS} gunicorn \
+    && rm -rf ${WHEELS} /root/.cache/pip
 
 # Install the Arches application
 # FIXME: ADD from github repository instead?
@@ -109,22 +107,22 @@ COPY . ${ARCHES_ROOT}
 WORKDIR ${ARCHES_ROOT}
 
 RUN . ../ENV/bin/activate \
-    && pip install -e . --group dev --prefer-binary
+    && pip install --no-cache-dir -e . --group dev --prefer-binary \
+    && rm -rf /root/.cache/pip
 
-# Pre-bake the bulky, stable static (arches-core node_modules vendor + core
-# media) into the base image.
-ENV ARCHES_BASE_STATIC=/static_base
-RUN . ../ENV/bin/activate \
-    && DJANGO_MODE=STATIC \
-       DJANGO_SECRET_KEY=base-build-dummy \
-       STATIC_ROOT=${ARCHES_BASE_STATIC} \
-       python manage.py collectstatic --noinput --skip-checks
 
 # Set default workdir
 WORKDIR ${ARCHES_ROOT}
 
 COPY docker/gunicorn_config.py ${ARCHES_ROOT}/gunicorn_config.py
 COPY docker/settings_local.py ${ARCHES_ROOT}/arches/settings_local.py
+
+# Strip __pycache__ and node_modules. node_modules is only needed during
+# webpack builds in downstream image stages (Dockerfile.static-py reinstalls it
+# transiently); at runtime, django-webpack-loader resolves via webpack-stats.json
+# and media/build, so the on-disk tree is dead weight.
+RUN rm -rf ${ARCHES_ROOT}/node_modules \
+    && find ${WEB_ROOT} -type d -name __pycache__ -prune -exec rm -rf {} + || true
 
 # Set entrypoint
 ENTRYPOINT ["../entrypoint.sh"]

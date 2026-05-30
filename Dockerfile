@@ -110,6 +110,14 @@ RUN . ../ENV/bin/activate \
     && pip install --no-cache-dir -e . --group dev --prefer-binary \
     && rm -rf /root/.cache/pip
 
+# Pre-bake the bulky, stable static (arches-core node_modules vendor + core
+# media) into the base image.
+ENV ARCHES_BASE_STATIC=/static_base
+RUN . ../ENV/bin/activate \
+    && DJANGO_MODE=STATIC \
+       DJANGO_SECRET_KEY=base-build-dummy \
+       STATIC_ROOT=${ARCHES_BASE_STATIC} \
+       python manage.py collectstatic --noinput --skip-checks
 
 # Set default workdir
 WORKDIR ${ARCHES_ROOT}
@@ -121,8 +129,9 @@ COPY docker/settings_local.py ${ARCHES_ROOT}/arches/settings_local.py
 # webpack builds in downstream image stages (Dockerfile.static-py reinstalls it
 # transiently); at runtime, django-webpack-loader resolves via webpack-stats.json
 # and media/build, so the on-disk tree is dead weight.
-RUN rm -rf ${ARCHES_ROOT}/node_modules \
-    && find ${WEB_ROOT} -type d -name __pycache__ -prune -exec rm -rf {} + || true
+# [PTW: take this out for now, as we depend on this to get the Arches base image media]
+# RUN rm -rf ${ARCHES_ROOT}/node_modules \
+#     && find ${WEB_ROOT} -type d -name __pycache__ -prune -exec rm -rf {} + || true
 
 # Set entrypoint
 ENTRYPOINT ["../entrypoint.sh"]

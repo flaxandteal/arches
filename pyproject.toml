@@ -49,7 +49,7 @@ dependencies = [
     "packaging==26.2",
     "pillow>=11.3.0",
     "polib==1.1.1",
-    "psycopg2-binary==2.9.10",
+    "psycopg2-binary==2.9.11",
     "pycryptodome<4.0.0,>=3.23.0",
     "pyjwt>=2.10.1,<3",
     "pyjwt[crypto]",

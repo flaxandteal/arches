@@ -126,7 +126,13 @@ var WidgetViewModel = function(params) {
             this.value(defaultValue);
         }
 
-        if (!self.form && self.state !== 'display_value') {
+        // Only sync a widget's value with the node-level (shared) defaultValue
+        // observable in the graph-designer widget-config preview (the one caller
+        // that passes graphDesignerHasDirtyWidget). node.config.defaultValue is a
+        // SINGLE observable shared by every widget for that node, so in the
+        // resource editor this two-way binding propagates one tile's value into
+        // every other cardinality-n tile (all tiles snap to the last edited one).
+        if (params.hasOwnProperty('graphDesignerHasDirtyWidget')) {
             if (ko.isObservable(self.value)) {
                 self.valueSubscription = self.value.subscribe(function(val){
                     if (self.defaultValue() != val) {

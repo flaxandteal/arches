@@ -1,0 +1,31 @@
+name: Trivy Container Scan
+
+on:
+  workflow_call:
+    inputs:
+      image-ref:
+        required: true
+        type: string
+        description: 'Full image reference to scan (e.g. ghcr.io/flaxandteal/catalina:sha)'
+
+jobs:
+  trivy-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        continue-on-error: true
+        with:
+          image-ref: ${{ inputs.image-ref }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        continue-on-error: true
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'

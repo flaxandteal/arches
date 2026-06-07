@@ -514,14 +514,14 @@ class NumberDataType(BaseDataType):
         document["numbers"].append(
             {
                 "number": nodevalue,
-                "nodegroup_id": tile.nodegroup_id,
+                "nodegroup_id": str(tile.nodegroup_id),
                 "provisional": provisional,
             }
         )
         document["strings"].append(
             {
                 "string": str(nodevalue),
-                "nodegroup_id": tile.nodegroup_id,
+                "nodegroup_id": str(tile.nodegroup_id),
                 "provisional": provisional,
             }
         )

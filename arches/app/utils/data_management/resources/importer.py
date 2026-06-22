@@ -203,6 +203,7 @@ class BusinessDataImporter(object):
         transaction_id=None,
         skip_validation=False,
         fire_functions=False,
+        upsert_if_present=False,
     ):
         start = time()
         cursor = connection.cursor()
@@ -225,6 +226,7 @@ class BusinessDataImporter(object):
                     transaction_id=transaction_id,
                     skip_validation=skip_validation,
                     fire_functions=fire_functions,
+                    upsert_if_present=upsert_if_present,
                 )
             elif file_format == "jsonl":
                 with open(self.file[0], "r") as openf:
@@ -242,6 +244,7 @@ class BusinessDataImporter(object):
                                 prevent_indexing=prevent_indexing,
                                 transaction_id=transaction_id,
                                 fire_functions=fire_functions,
+                                upsert_if_present=upsert_if_present,
                             )
             elif file_format == "csv" or file_format == "shp" or file_format == "zip":
                 if mapping is not None:

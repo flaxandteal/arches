@@ -164,8 +164,10 @@ class ArchesFileReader(Reader):
     def import_business_data_without_mapping(
         self, business_data, reporter, overwrite="append", prevent_indexing=False,
         bulk_size=100, skip_validation=False,
-        fire_functions=False, bulk_import_threshold=500,
+        fire_functions=False, bulk_import_threshold=500, upsert_if_present=False,
     ):
+        if upsert_if_present:
+            print("Upserting tiles into existing resources, if present")
         num_resources = len([
             r for r in business_data.get("resources", [])
         ])
@@ -182,9 +184,13 @@ class ArchesFileReader(Reader):
                 bulk_size=bulk_size,
                 skip_validation=skip_validation,
                 fire_functions=fire_functions,
+                upsert_if_present=upsert_if_present,
             )
             importer.import_resources(business_data)
             return
+
+        if upsert_if_present:
+            raise NotImplementedError("Only supported for the bulk Arches file loader")
 
         errors = []
         graph_uuids = GraphModel.objects.values_list("pk", flat=True)
@@ -320,6 +326,7 @@ class ArchesFileReader(Reader):
         skip_validation=False,
         fire_functions=False,
         bulk_import_threshold=500,
+        upsert_if_present=False,
     ):
         reporter = ResourceImportReporter(business_data)
         try:
@@ -332,6 +339,7 @@ class ArchesFileReader(Reader):
                     skip_validation=skip_validation,
                     fire_functions=fire_functions,
                     bulk_import_threshold=bulk_import_threshold,
+                    upsert_if_present=upsert_if_present
                 )
             else:
                 blanktilecache = {}

@@ -37,6 +37,7 @@ class BulkArchesFileImporter:
         bulk_size=100,
         skip_validation=False,
         fire_functions=False,
+        upsert_if_present=False
     ):
         self.reporter = reporter
         self.overwrite = overwrite
@@ -44,6 +45,7 @@ class BulkArchesFileImporter:
         self.bulk_size = bulk_size
         self.skip_validation = skip_validation
         self.fire_functions = fire_functions
+        self.upsert_if_present = upsert_if_present
 
         self.failed_resources = []
         self._imported_resource_ids = []
@@ -401,6 +403,7 @@ class BulkArchesFileImporter:
             Resource.objects.filter(
                 resourceinstanceid__in=existing_ids
             ).delete()
+            already_exist = set()
         else:
             candidate_ids = [r.resourceinstanceid for r in batch]
             already_exist = set(
@@ -420,12 +423,13 @@ class BulkArchesFileImporter:
                             str(r.graph_id),
                             "Resource already exists (duplicate resourceinstanceid)",
                         )
-                batch = [
-                    r for r in batch
-                    if r.resourceinstanceid not in already_exist
-                ]
-                if not batch:
-                    return
+                if not self.upsert_if_present:
+                    batch = [
+                        r for r in batch
+                        if r.resourceinstanceid not in already_exist
+                    ]
+                    if not batch:
+                        return
 
         valid_resources, failures = self._validate_batch(
             batch, constraint_map, global_constraint_seen,
@@ -444,7 +448,10 @@ class BulkArchesFileImporter:
             f"  Bulk creating {len(valid_resources)} resources, "
             f"{len(tiles)} tiles..."
         )
-        Resource.objects.bulk_create(valid_resources)
+        Resource.objects.bulk_create([
+            r for r in valid_resources
+            if r.resourceinstanceid not in already_exist
+        ])
         Tile.objects.bulk_create(tiles)
         self.reporter.update_tiles(len(tiles))
         for _ in tiles:

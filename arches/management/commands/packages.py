@@ -290,6 +290,14 @@ class Command(BaseCommand):
         )
 
         parser.add_argument(
+            "-up",
+            "--upsert_if_present",
+            action="store_true",
+            dest="upsert_if_present",
+            help="Upsert tiles if the resource exists (bulk Arches file loader only)"
+        )
+
+        parser.add_argument(
             "-create_concepts",
             "--create_concepts",
             action="store",
@@ -413,6 +421,7 @@ class Command(BaseCommand):
                 prevent_indexing=prevent_indexing,
                 skip_validation=options.get("skip_validation", False),
                 fire_functions=options.get("fire_functions", False),
+                upsert_if_present=options.get("upsert_if_present", False),
             )
 
             if defer_indexing and not prevent_indexing:
@@ -1461,6 +1470,7 @@ class Command(BaseCommand):
         prevent_indexing=False,
         skip_validation=False,
         fire_functions=False,
+        upsert_if_present=False,
     ):
         """
         Imports business data from all formats. A config file (mapping file) is required for .csv format.
@@ -1567,6 +1577,7 @@ class Command(BaseCommand):
                         transaction_id=transaction_id,
                         skip_validation=skip_validation,
                         fire_functions=fire_functions,
+                        upsert_if_present=upsert_if_present,
                     )
                 else:
                     utils.print_message(

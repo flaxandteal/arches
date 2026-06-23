@@ -3,7 +3,7 @@ from typing import Dict, Tuple
 from arches.app.models.system_settings import settings
 from arches.app.search.components.base_search_view import BaseSearchView
 from arches.app.search.components.base import SearchFilterFactory
-from arches.app.search.elasticsearch_dsl_builder import Query
+from arches.app.search.elasticsearch_dsl_builder import Bool, Ids, Query
 from arches.app.search.mappings import RESOURCES_INDEX
 from arches.app.search.search_engine_factory import SearchEngineFactory
 from arches.app.views.search import (
@@ -147,6 +147,12 @@ class StandardSearchView(BaseSearchView):
         total = int(self.request.GET.get("total", "0"))
         resourceinstanceid = self.request.GET.get("id", None)
         dsl = search_query_object["query"]
+
+        if resourceinstanceid:
+            ids_filter = Bool()
+            ids_filter.must(Ids(ids=[resourceinstanceid]))
+            dsl.add_query(ids_filter)
+
         if for_export or pages:
             results = dsl.search(index=RESOURCES_INDEX, scroll="1m")
             scroll_id = results["_scroll_id"]
@@ -164,16 +170,7 @@ class StandardSearchView(BaseSearchView):
                 results_scrolled = dsl.se.es.scroll(scroll_id=scroll_id, scroll="1m")
                 results["hits"]["hits"] += results_scrolled["hits"]["hits"]
         else:
-            results = dsl.search(index=RESOURCES_INDEX, id=resourceinstanceid)
-
-        if results is not None:
-            if "hits" not in results:
-                if "docs" in results:
-                    results = {"hits": {"hits": results["docs"]}}
-                else:
-                    results = {"hits": {"hits": [results]}}
-
-                results["hits"]["total"] = {"value": len(results["hits"]["hits"])}
+            results = dsl.search(index=RESOURCES_INDEX)
 
         response_object["results"] = results
 

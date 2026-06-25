@@ -196,7 +196,7 @@ class StringDataType(BaseDataType):
                 val = {
                     "string": nodevalue[key]["value"],
                     "language": key,
-                    "nodegroup_id": tile.nodegroup_id,
+                    "nodegroup_id": str(tile.nodegroup_id),
                     "provisional": provisional,
                 }
                 document["strings"].append(val)
@@ -837,7 +837,7 @@ class DateDataType(BaseDataType):
         document["dates"].append(
             {
                 "date": ExtendedDateFormat(nodevalue).lower,
-                "nodegroup_id": tile.nodegroup_id,
+                "nodegroup_id": str(tile.nodegroup_id),
                 "nodeid": nodeid,
                 "provisional": provisional,
             }
@@ -1006,7 +1006,7 @@ class EDTFDataType(BaseDataType):
                     document["dates"].append(
                         {
                             "date": edtf.lower,
-                            "nodegroup_id": tile.nodegroup_id,
+                            "nodegroup_id": str(tile.nodegroup_id),
                             "nodeid": nodeid,
                             "provisional": provisional,
                         }
@@ -1018,7 +1018,7 @@ class EDTFDataType(BaseDataType):
                     document["dates"].append(
                         {
                             "date": edtf.lower_fuzzy,
-                            "nodegroup_id": tile.nodegroup_id,
+                            "nodegroup_id": str(tile.nodegroup_id),
                             "nodeid": nodeid,
                             "provisional": provisional,
                         }
@@ -1028,7 +1028,7 @@ class EDTFDataType(BaseDataType):
                     document["dates"].append(
                         {
                             "date": edtf.upper_fuzzy,
-                            "nodegroup_id": tile.nodegroup_id,
+                            "nodegroup_id": str(tile.nodegroup_id),
                             "nodeid": nodeid,
                             "provisional": provisional,
                         }
@@ -1036,7 +1036,7 @@ class EDTFDataType(BaseDataType):
                 document["date_ranges"].append(
                     {
                         "date_range": dr,
-                        "nodegroup_id": tile.nodegroup_id,
+                        "nodegroup_id": str(tile.nodegroup_id),
                         "nodeid": nodeid,
                         "provisional": provisional,
                     }
@@ -1275,7 +1275,7 @@ class FileListDataType(BaseDataType):
             metadata_fields = ["title", "description", "altText", "attribution"]
             val = {
                 "string": f["name"],
-                "nodegroup_id": tile.nodegroup_id,
+                "nodegroup_id": str(tile.nodegroup_id),
                 "provisional": provisional,
             }
             document["strings"].append(val)
@@ -1287,7 +1287,7 @@ class FileListDataType(BaseDataType):
                                 {
                                     "string": f[field][lang]["value"],
                                     "language": lang,
-                                    "nodegroup_id": tile.nodegroup_id,
+                                    "nodegroup_id": str(tile.nodegroup_id),
                                     "provisional": provisional,
                                 }
                             )
@@ -1887,7 +1887,7 @@ class DomainDataType(BaseDomainDataType):
             val = {
                 "string": domain_text[key],
                 "language": key,
-                "nodegroup_id": tile.nodegroup_id,
+                "nodegroup_id": str(tile.nodegroup_id),
                 "provisional": provisional,
             }
             document["strings"].append(val)
@@ -2088,7 +2088,7 @@ class DomainListDataType(BaseDomainDataType):
                 val = {
                     "string": domain_text[key],
                     "language": key,
-                    "nodegroup_id": tile.nodegroup_id,
+                    "nodegroup_id": str(tile.nodegroup_id),
                     "provisional": provisional,
                 }
                 document["strings"].append(val)
@@ -2324,7 +2324,7 @@ class ResourceInstanceDataType(BaseDataType):
             document["ids"].append(
                 {
                     "id": relatedResourceItem["resourceId"],
-                    "nodegroup_id": tile.nodegroup_id,
+                    "nodegroup_id": str(tile.nodegroup_id),
                     "provisional": provisional,
                 }
             )
@@ -2332,7 +2332,7 @@ class ResourceInstanceDataType(BaseDataType):
                 document["strings"].append(
                     {
                         "string": relatedResourceItem["resourceName"],
-                        "nodegroup_id": tile.nodegroup_id,
+                        "nodegroup_id": str(tile.nodegroup_id),
                         "provisional": provisional,
                     }
                 )
@@ -2352,7 +2352,7 @@ class ResourceInstanceDataType(BaseDataType):
                     document["strings"].append(
                         {
                             "string": relationship,
-                            "nodegroup_id": tile.nodegroup_id,
+                            "nodegroup_id": str(tile.nodegroup_id),
                             "provisional": provisional,
                         }
                     )

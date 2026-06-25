@@ -295,7 +295,13 @@ class ArchesFileReader(Reader):
         overwrite="append",
         prevent_indexing=False,
         transaction_id=None,
+        skip_validation=False,
+        fire_functions=False,
+        bulk_import_threshold=None,
+        upsert_if_present=False,
     ):
+        if bulk_import_threshold is None:
+            bulk_import_threshold = 500
         reporter = ResourceImportReporter(business_data)
         try:
             if mapping is None or mapping == "":

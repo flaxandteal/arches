@@ -219,6 +219,7 @@ class BusinessDataImporter(object):
                     business_data,
                     mapping=mapping,
                     overwrite=overwrite,
+                    bulk_import_threshold=0 if bulk else None,
                     prevent_indexing=prevent_indexing,
                     transaction_id=transaction_id,
                 )
@@ -235,6 +236,7 @@ class BusinessDataImporter(object):
                             reader.import_business_data(
                                 {"resources": [archesresource]},
                                 overwrite=overwrite,
+                                bulk_import_threshold=0 if bulk else None,
                                 prevent_indexing=prevent_indexing,
                                 transaction_id=transaction_id,
                             )

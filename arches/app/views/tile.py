@@ -256,14 +256,29 @@ class TileData(View):
                 data = JSONDeserializer().deserialize(json)
 
                 if "tiles" in data and len(data["tiles"]) > 0:
-                    sortorder = 0
-                    with transaction.atomic():
-                        for tile in data["tiles"]:
-                            t = Tile(tile)
-                            if t.filter_by_perm(request.user, "write_nodegroup"):
-                                t.sortorder = sortorder
-                                t.save(update_fields=["sortorder"], request=request)
-                                sortorder = sortorder + 1
+                    tile_ids = [tile["tileid"] for tile in data["tiles"]]
+                    tiles_qs = models.TileModel.objects.filter(
+                        tileid__in=tile_ids
+                    ).select_related("nodegroup")
+                    tiles_by_id = {str(t.tileid): t for t in tiles_qs}
+
+                    tiles_to_update = []
+                    for sortorder, tile_data in enumerate(data["tiles"]):
+                        tile_obj = tiles_by_id.get(tile_data["tileid"])
+                        if tile_obj is None:
+                            continue
+                        if not request.user.has_perm(
+                            "write_nodegroup", tile_obj.nodegroup
+                        ):
+                            continue
+                        tile_obj.sortorder = sortorder
+                        tiles_to_update.append(tile_obj)
+
+                    if tiles_to_update:
+                        with transaction.atomic():
+                            models.TileModel.objects.bulk_update(
+                                tiles_to_update, ["sortorder"]
+                            )
                     return JSONResponse(data)
 
         if self.action == "delete_provisional_tile":

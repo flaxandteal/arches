@@ -724,6 +724,74 @@ class ResourceTests(ArchesTestCase):
             with self.subTest(display_type=display_type):
                 self.assertEqual(display_type(), "test value")
 
+    def test_descriptors_calculated_once_per_save(self):
+        """Descriptors are computed once per resource save, not once per tile.
+
+        Tile.save() used to recompute descriptors for every tile in the tree;
+        each intermediate result was then overwritten by the next one, so an
+        N-tile resource paid for N-1 wasted recomputes (each one a descriptor
+        function run plus a write).
+        """
+        graph = Graph.objects.create_graph(
+            name="Descriptor Count Graph", is_resource=True
+        )
+        node_group = models.NodeGroup.objects.create(cardinality="n")
+        string_node = models.Node.objects.create(
+            graph=graph,
+            nodegroup=node_group,
+            name="String Node",
+            datatype="string",
+            istopnode=False,
+        )
+        graph.add_node(string_node)
+        graph.add_edge(
+            models.Edge.objects.create(
+                graph=graph, domainnode=graph.root, rangenode=string_node
+            )
+        )
+        graph.add_card(
+            models.CardModel(
+                graph=graph, nodegroup=node_group, description="Test Card"
+            )
+        )
+        models.FunctionXGraph.objects.create(
+            graph=graph,
+            function_id="60000000-0000-0000-0000-000000000001",
+            config={
+                "descriptor_types": {
+                    descriptor: {
+                        "nodegroup_id": str(node_group.nodegroupid),
+                        "string_template": "<String Node>",
+                    }
+                    for descriptor in ("name", "map_popup", "description")
+                },
+            },
+        )
+        graph.save(validate=False)
+        graph.publish(user=User.objects.get(username="admin"))
+
+        resource = Resource(graph=graph)
+        for i in range(3):
+            resource.tiles.append(
+                Tile(
+                    nodegroup=node_group,
+                    resourceinstance=resource,
+                    data={
+                        str(string_node.pk): {
+                            "en": {"value": f"value {i}", "direction": "ltr"},
+                        }
+                    },
+                    sortorder=i,
+                )
+            )
+
+        with patch.object(
+            Resource, "save_descriptors", autospec=True
+        ) as mocked_save_descriptors:
+            resource.save(index=False)
+
+        self.assertEqual(mocked_save_descriptors.call_count, 1)
+
     def test_recalculate_descriptors_prefetch_related_objects(self):
         other_graph = Graph.objects.create_graph(name="Other graph", is_resource=True)
         r1 = Resource(graph_id=self.search_model_graphid)

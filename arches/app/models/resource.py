@@ -213,7 +213,7 @@ class Resource(models.ResourceInstance):
                 else:
                     self.descriptors[language][descriptor] = None
 
-        super(Resource, self).save()
+        super(Resource, self).save(update_fields=["descriptors", "name"])
 
     def displaydescription(self, context=None):
         return self.get_descriptor("description", context)
@@ -300,11 +300,15 @@ class Resource(models.ResourceInstance):
             tile.save(
                 request=request,
                 index=False,
+                compute_descriptors=False,
                 resource_creation=True,
                 transaction_id=transaction_id,
                 context=context,
                 resource=self,
             )
+
+        if self.tiles:
+            self.save_descriptors()
 
         if index is True:
             self.index(context)

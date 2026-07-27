@@ -107,6 +107,9 @@ class Tile(models.TileModel):
 
         self.serialized_graph = None
         self.load_serialized_graph()
+        self._node_by_id = None
+        self._node_by_id_source = None
+        self._function_rows = None
 
     def load_serialized_graph(self):
         try:
@@ -257,59 +260,80 @@ class Tile(models.TileModel):
                 edit = edits[str(user.id)]
         return edit
 
+    def _get_node_dict(self, nodeid):
+        """Return the node dict for nodeid from the (cached) serialized graph, or None.
+
+        Building the nodeid->node index once per tile avoids re-scanning the
+        full node list of the serialized graph for every node in the tile.
+        Callers may reassign serialized_graph after __init__ (the bulk importer
+        does), so the index is keyed on the identity of the graph it was built
+        from and rebuilt if that changes.
+        """
+        if self.serialized_graph is None:
+            return None
+        if self._node_by_id is None or self._node_by_id_source is not self.serialized_graph:
+            self._node_by_id = {n["nodeid"]: n for n in self.serialized_graph["nodes"]}
+            self._node_by_id_source = self.serialized_graph
+        return self._node_by_id.get(nodeid)
+
     def check_for_constraint_violation(self):
         if settings.BYPASS_UNIQUE_CONSTRAINT_TILE_VALIDATION:
             return
-        card = models.CardModel.objects.get(nodegroup=self.nodegroup)
-        constraints = models.ConstraintModel.objects.filter(card=card)
-        if constraints.exists():
-            for constraint in constraints:
-                if constraint.uniquetoallinstances is True:
-                    tiles = models.TileModel.objects.filter(
-                        nodegroup_id=self.nodegroup_id
-                    )
-                else:
-                    tiles = models.TileModel.objects.filter(
-                        Q(resourceinstance_id=self.resourceinstance.resourceinstanceid)
-                        & Q(nodegroup_id=self.nodegroup_id)
-                    )
-                nodes = [node for node in constraint.nodes.all()]
-                for tile in tiles:
-                    if str(self.tileid) != str(tile.tileid):
-                        match = False
-                        duplicate_values = []
-                        for node in nodes:
-                            datatype = self.datatype_factory.get_instance(node.datatype)
-                            nodeid = str(node.nodeid)
-                            tile_data = ""
-                            if tile.provisionaledits is None:
-                                # If this is not a provisional tile, the data should
-                                # exist, so we check it normally
-                                tile_data = tile.data[nodeid]
-                            else:
-                                # If it is a provisional tile, we need to check the
-                                # provisional edits for clashing values
-                                for edit_id in tile.provisionaledits.keys():
-                                    edit_data = tile.provisionaledits[str(edit_id)]
-                                    if nodeid in edit_data["value"]:
-                                        tile_data = edit_data["value"][nodeid]
-                                        break
-                            if datatype.values_match(tile_data, self.data[nodeid]):
-                                match = True
-                                duplicate_values.append(
-                                    datatype.get_display_value(tile, node)
-                                )
-                            else:
-                                match = False
+        # One query for card+constraints+nodes (via prefetch) instead of a
+        # CardModel lookup, a separate ConstraintModel query, and one nodes.all()
+        # query per constraint.
+        constraints = models.ConstraintModel.objects.filter(
+            card__nodegroup_id=self.nodegroup_id
+        ).prefetch_related("nodes")
+        for constraint in constraints:
+            if constraint.uniquetoallinstances is True:
+                tiles = models.TileModel.objects.filter(
+                    nodegroup_id=self.nodegroup_id
+                )
+            else:
+                tiles = models.TileModel.objects.filter(
+                    Q(resourceinstance_id=self.resourceinstance.resourceinstanceid)
+                    & Q(nodegroup_id=self.nodegroup_id)
+                )
+            # Skip this tile at the DB layer rather than fetching every row in
+            # the nodegroup and discarding the self-match in Python.
+            tiles = tiles.exclude(pk=self.tileid)
+            nodes = list(constraint.nodes.all())
+            for tile in tiles:
+                match = False
+                duplicate_values = []
+                for node in nodes:
+                    datatype = self.datatype_factory.get_instance(node.datatype)
+                    nodeid = str(node.nodeid)
+                    tile_data = ""
+                    if tile.provisionaledits is None:
+                        # If this is not a provisional tile, the data should
+                        # exist, so we check it normally
+                        tile_data = tile.data[nodeid]
+                    else:
+                        # If it is a provisional tile, we need to check the
+                        # provisional edits for clashing values
+                        for edit_id in tile.provisionaledits.keys():
+                            edit_data = tile.provisionaledits[str(edit_id)]
+                            if nodeid in edit_data["value"]:
+                                tile_data = edit_data["value"][nodeid]
                                 break
-                        if match is True:
-                            message = _(
-                                "This card violates a unique constraint. \
-                                The following value is already saved: "
-                            )
-                            raise TileValidationError(
-                                message + (", ").join(duplicate_values)
-                            )
+                    if datatype.values_match(tile_data, self.data[nodeid]):
+                        match = True
+                        duplicate_values.append(
+                            datatype.get_display_value(tile, node)
+                        )
+                    else:
+                        match = False
+                        break
+                if match is True:
+                    message = _(
+                        "This card violates a unique constraint. \
+                        The following value is already saved: "
+                    )
+                    raise TileValidationError(
+                        message + (", ").join(duplicate_values)
+                    )
 
     def check_for_missing_nodes(self):
         if settings.BYPASS_REQUIRED_VALUE_TILE_VALIDATION:
@@ -317,18 +341,10 @@ class Tile(models.TileModel):
         missing_nodes = []
         for nodeid, value in self.data.items():
             try:
-                try:
-                    node = SimpleNamespace(
-                        **next(
-                            (
-                                x
-                                for x in self.serialized_graph["nodes"]
-                                if x["nodeid"] == nodeid
-                            ),
-                            None,
-                        )
-                    )
-                except:
+                node_dict = self._get_node_dict(nodeid)
+                if node_dict is not None:
+                    node = SimpleNamespace(**node_dict)
+                else:
                     node = models.Node.objects.get(nodeid=nodeid)
                 datatype = self.datatype_factory.get_instance(node.datatype)
                 datatype.clean(self, nodeid)
@@ -364,19 +380,11 @@ class Tile(models.TileModel):
 
         tile_errors = []
         for nodeid, value in self.data.items():
-            try:
-                node = SimpleNamespace(
-                    **next(
-                        (
-                            x
-                            for x in self.serialized_graph["nodes"]
-                            if x["nodeid"] == nodeid
-                        ),
-                        None,
-                    )
-                )
+            node_dict = self._get_node_dict(nodeid)
+            if node_dict is not None:
+                node = SimpleNamespace(**node_dict)
                 node.pk = uuid.UUID(node.nodeid)
-            except TypeError:  # will catch if serialized_graph is None
+            else:
                 node = models.Node.objects.get(nodeid=nodeid)
             datatype = self.datatype_factory.get_instance(node.datatype)
             error = datatype.validate(value, node=node, strict=strict, request=request)
@@ -417,18 +425,10 @@ class Tile(models.TileModel):
 
         tile_data = self.get_tile_data(userid)
         for nodeid in tile_data.keys():
-            try:
-                node = SimpleNamespace(
-                    **next(
-                        (
-                            x
-                            for x in self.serialized_graph["nodes"]
-                            if x["nodeid"] == nodeid
-                        ),
-                        None,
-                    )
-                )
-            except:
+            node_dict = self._get_node_dict(nodeid)
+            if node_dict is not None:
+                node = SimpleNamespace(**node_dict)
+            else:
                 node = models.Node.objects.get(nodeid=nodeid)
             datatype = self.datatype_factory.get_instance(node.datatype)
             datatype.post_tile_save(self, nodeid, request)
@@ -436,6 +436,7 @@ class Tile(models.TileModel):
     def save(self, **kwargs):
         request = kwargs.pop("request", None)
         index = kwargs.pop("index", True)
+        compute_descriptors = kwargs.pop("compute_descriptors", True)
         user = kwargs.pop("user", None)
         new_resource_created = kwargs.pop("new_resource_created", False)
         resource_creation = kwargs.pop("resource_creation", False)
@@ -462,11 +463,7 @@ class Tile(models.TileModel):
 
         with transaction.atomic():
             for nodeid in self.data.keys():
-                node = next(
-                    item
-                    for item in self.serialized_graph["nodes"]
-                    if item["nodeid"] == nodeid
-                )
+                node = self._get_node_dict(nodeid)
                 datatype = self.datatype_factory.get_instance(node["datatype"])
                 datatype.pre_tile_save(self, nodeid)
             self.__preSave(request, context=context)
@@ -547,18 +544,24 @@ class Tile(models.TileModel):
                     request=request,
                     resource_creation=resource_creation,
                     index=False,
+                    compute_descriptors=False,
                     context=context,
                     **kwargs,
                 )
 
-            if resource is None:
-                resource = Resource.objects.select_related("graph__publication").get(
-                    pk=self.resourceinstance_id
-                )
-            resource.save_descriptors(context={"tile": self})
-
-            if index:
-                self.index(resource=resource)
+            # Child tiles are always saved with compute_descriptors=False so that
+            # descriptors are recomputed once per top-level save() call instead of
+            # once per tile in the tree (every intermediate recompute would just
+            # be overwritten by the final one anyway).
+            if compute_descriptors or index:
+                if resource is None:
+                    resource = Resource.objects.select_related(
+                        "graph__publication"
+                    ).get(pk=self.resourceinstance_id)
+                if compute_descriptors:
+                    resource.save_descriptors(context={"tile": self})
+                if index:
+                    self.index(resource=resource)
 
     def populate_missing_nodes(self):
         first_node = next(iter(self.data.items()), None)
@@ -831,21 +834,32 @@ class Tile(models.TileModel):
                 pass
 
     def _getFunctionClassInstances(self):
+        # The underlying query only depends on graph_id/nodegroup_id, both fixed
+        # for the lifetime of this tile's save() call, so it's safe to cache the
+        # matching rows here and reuse them for both __preSave and __postSave.
+        # Fresh function instances are still built on every call below, so no
+        # per-call state can leak between preSave and postSave.
+        if self._function_rows is None:
+            functionXgraphs = list(
+                models.FunctionXGraph.objects.filter(
+                    Q(graph_id=self.resourceinstance.graph_id),
+                    Q(config__contains={"triggering_nodegroups": [str(self.nodegroup_id)]})
+                    | Q(config__triggering_nodegroups__exact=[]),
+                    ~Q(function__functiontype="primarydescriptors"),
+                ).select_related("function")
+            )
+            global_functions = list(models.Function.objects.filter(Q(functiontype="global")))
+            self._function_rows = (functionXgraphs, global_functions)
+
+        functionXgraphs, global_functions = self._function_rows
         ret = []
-        functionXgraphs = models.FunctionXGraph.objects.filter(
-            Q(graph_id=self.resourceinstance.graph_id),
-            Q(config__contains={"triggering_nodegroups": [str(self.nodegroup_id)]})
-            | Q(config__triggering_nodegroups__exact=[]),
-            ~Q(function__functiontype="primarydescriptors"),
-        ).select_related("function")
         for functionXgraph in functionXgraphs:
             func = functionXgraph.function.get_class_module()(
                 functionXgraph.config, self.nodegroup_id
             )
             ret.append(func)
 
-        functions = models.Function.objects.filter(Q(functiontype="global"))
-        for function in functions:
+        for function in global_functions:
             ret.append(function.get_class_module()())
 
         return ret

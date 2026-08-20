@@ -457,6 +457,33 @@ def load_json_ld(userid, files, summary, result, temp_dir, loadid, moduleid):
 
 
 @shared_task
+def load_arches_json(userid, files, summary, result, temp_dir, loadid, moduleid):
+    from arches.app.etl_modules import arches_json_importer
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        importer = arches_json_importer.ArchesJsonImporter(
+            loadid=loadid,
+            temp_dir=temp_dir,
+        )
+        importer.userid = userid
+        importer.moduleid = moduleid
+        importer.run_load_task(userid, files, summary, result, temp_dir, loadid)
+
+        load_event = models.LoadEvent.objects.get(loadid=loadid)
+        status = _("Completed") if load_event.status == "indexed" else _("Failed")
+    except Exception as e:
+        logger.error(e, exc_info=True)
+        models.LoadEvent.objects.filter(loadid=loadid).update(status="failed")
+        status = _("Failed")
+    finally:
+        msg = _("Arches JSON Import: {} [{}]").format(summary["name"], status)
+        user = User.objects.get(id=userid)
+        notify_completion(msg, user)
+
+
+@shared_task
 def edit_bulk_string_data(
     userid,
     load_id,

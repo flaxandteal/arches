@@ -171,13 +171,16 @@ class Resource(models.ResourceInstance):
                 pass
 
     def save_descriptors(
-        self, descriptors=("name", "description", "map_popup"), context=None
+        self, descriptors=("name", "description", "map_popup"), context=None, save=True
     ):
         """
         descriptors -- iterator with descriptors to be calculated
         context -- Dictionary which may have:
             language -- Language code in which the descriptor should be returned (e.g. 'en').
             any key:value pairs needed to control the behavior of a custom descriptor function
+        save -- when False, compute the descriptors onto the instance but do not
+            write the row. Lets a caller processing many resources collect them
+            and issue one bulk_update instead of a full-row UPDATE per resource.
         """
 
         if self.descriptor_function is None:  # might be empty queryset
@@ -213,7 +216,8 @@ class Resource(models.ResourceInstance):
                 else:
                     self.descriptors[language][descriptor] = None
 
-        super(Resource, self).save()
+        if save:
+            super(Resource, self).save()
 
     def displaydescription(self, context=None):
         return self.get_descriptor("description", context)

@@ -265,6 +265,18 @@ def index_resources_using_singleprocessing(
                 else:
                     bar = None
             chunk_size = max(batch_size // 8, 8)
+            # save_descriptors() ends in a full-row UPDATE. Doing that per
+            # resource is a round-trip each; on a large load or reindex it
+            # dominates. Collect and write them a chunk at a time instead.
+            pending_descriptor_writes = []
+
+            def flush_descriptor_writes():
+                if pending_descriptor_writes:
+                    Resource.objects.bulk_update(
+                        pending_descriptor_writes, ["descriptors", "name"]
+                    )
+                    pending_descriptor_writes.clear()
+
             for resource in optimize_resource_iteration(
                 resources, chunk_size=chunk_size, serialized_graph=serialized_graph
             ):
@@ -280,7 +292,10 @@ def index_resources_using_singleprocessing(
 
                 resource.set_node_datatypes(node_datatypes)
                 if recalculate_descriptors:
-                    resource.save_descriptors()
+                    resource.save_descriptors(save=False)
+                    pending_descriptor_writes.append(resource)
+                    if len(pending_descriptor_writes) >= chunk_size:
+                        flush_descriptor_writes()
                 if quiet is False and bar is not None:
                     bar.update(item_id=resource)
                 document, terms = resource.get_documents_to_index(
@@ -298,6 +313,8 @@ def index_resources_using_singleprocessing(
                     term_indexer.add(
                         index=TERMS_INDEX, id=term["_id"], data=term["_source"]
                     )
+
+            flush_descriptor_writes()
 
     return os.getpid()
 

@@ -145,7 +145,9 @@ def _update_load_details(cursor, loadid):
     logger.debug("load_event marked completed for loadid=%s", loadid)
 
 
-def _post_save_edit_log(userid, loadid, multiprocessing=False, max_subprocesses=0):
+def _post_save_edit_log(
+    userid, loadid, multiprocessing=False, max_subprocesses=0, index=True
+):
     logger.debug(
         "_post_save_edit_log started: loadid=%s userid=%s multiprocessing=%s",
         loadid,
@@ -157,13 +159,14 @@ def _post_save_edit_log(userid, loadid, multiprocessing=False, max_subprocesses=
             log_event_details(cursor, loadid, "done|Indexing...")
 
         logger.debug("Indexing resources by transaction for loadid=%s", loadid)
-        index_resources_by_transaction(
-            loadid,
-            use_multiprocessing=multiprocessing,
-            quiet=True,
-            recalculate_descriptors=True,
-            max_subprocesses=max_subprocesses,
-        )
+        if index:
+            index_resources_by_transaction(
+                loadid,
+                use_multiprocessing=multiprocessing,
+                quiet=True,
+                recalculate_descriptors=True,
+                max_subprocesses=max_subprocesses,
+            )
         logger.debug(
             "Indexing complete for loadid=%s; fetching user id=%s", loadid, userid
         )
@@ -200,12 +203,17 @@ def _post_save_edit_log(userid, loadid, multiprocessing=False, max_subprocesses=
                 ),
             )
             log_event_details(cursor, loadid, "done")
+            # Skipping the index leaves the data saved but unsearchable, which
+            # is what "unindexed" means -- reindex with manage.py index_database.
+            status = "indexed" if index else "unindexed"
             cursor.execute(
                 """UPDATE load_event SET (status, indexed_time, complete, successful) = (%s, %s, %s, %s) WHERE loadid = %s""",
-                ("indexed", datetime.now(), True, True, loadid),
+                (status, datetime.now(), True, True, loadid),
             )
-        logger.debug("_post_save_edit_log complete: loadid=%s status=indexed", loadid)
-        return {"success": True, "data": "indexed"}
+        logger.debug(
+            "_post_save_edit_log complete: loadid=%s status=%s", loadid, status
+        )
+        return {"success": True, "data": status}
     except Exception as e:
         logger.exception(e)
         with connection.cursor() as cursor:

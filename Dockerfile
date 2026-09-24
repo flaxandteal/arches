@@ -54,9 +54,22 @@ RUN mkdir ${WEB_ROOT}
 COPY --from=wheelbuilder ${WHEELS} /wheels
 
 # Install packages required to run Arches
+#
+# RUN_DEPS installs the GDAL/GEOS/PROJ *runtime* shared libraries, not
+# libgdal-dev. Django's GIS backend loads them via ctypes at runtime; arches
+# core does not pip-install the GDAL python bindings (which would need
+# gdal-config/headers to build), and psycopg2-binary bundles its own libpq,
+# so no -dev package is needed here at all. libgdal-dev was the single
+# largest source of CRITICAL CVEs in downstream image scans (ECR/Trivy),
+# because it drags in libc6-dev/linux-libc-dev transitively. Package names
+# are specific to Ubuntu 24.04 (noble). apt-get upgrade picks up pending
+# security patches for the base image's other packages (curl, perl, glibc,
+# openssl, glib were flagged CRITICAL in the same scans).
 RUN set -ex \
     && RUN_DEPS=" \
-        libgdal-dev \
+        libgdal34t64 \
+        libgeos-c1t64 \
+        libproj25 \
         python3-venv \
         postgresql-client-12 \
         python3.12 \
@@ -72,6 +85,7 @@ RUN set -ex \
     && curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
     && add-apt-repository "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -sc)-pgdg main" \
     && apt-get update -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y \
     && apt-get install -y --no-install-recommends $RUN_DEPS \
     && apt-get install -y --no-install-recommends nodejs git \
     && apt-get clean && rm -rf /var/lib/apt/lists/*

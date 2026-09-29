@@ -124,6 +124,12 @@ RUN . ../ENV/bin/activate \
     && pip install --no-cache-dir -e . --group dev --prefer-binary \
     && rm -rf /root/.cache/pip
 
+# The app only ever uses the venv's own pip (see entrypoint.sh activate_virtualenv).
+# Purge the system apt pip/wheel packages so their CVEs stop showing up in image scans.
+RUN apt-get purge -y python3-pip python3-pip-whl python3-wheel \
+    && apt-get autoremove -y \
+    && rm -rf /var/lib/apt/lists/*
+
 # Pre-bake the bulky, stable static (arches-core node_modules vendor + core
 # media) into the base image.
 ENV ARCHES_BASE_STATIC=/static_base

@@ -91,10 +91,10 @@ RUN set -ex \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install npm components
-COPY ./package.json ${ARCHES_ROOT}/package.json
+# Without the lockfile, npm 10 crashes resolving the overrides ("reading 'edgesOut'").
+COPY ./package.json ./package-lock.json ${ARCHES_ROOT}/
 WORKDIR ${ARCHES_ROOT}
-RUN mkdir -p ${ARCHES_ROOT}/node_modules
-RUN npm install \
+RUN npm ci \
     && npm cache clean --force \
     && rm -rf /root/.npm /tmp/*
 

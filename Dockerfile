@@ -133,11 +133,13 @@ RUN apt-get purge -y python3-pip python3-pip-whl python3-wheel \
 # Pre-bake the bulky, stable static (arches-core node_modules vendor + core
 # media) into the base image.
 ENV ARCHES_BASE_STATIC=/static_base
+# Core settings.py hardcodes STATIC_ROOT (an env var is ignored), so collect
+# to its default and move the result.
 RUN . ../ENV/bin/activate \
     && DJANGO_MODE=STATIC \
        DJANGO_SECRET_KEY=base-build-dummy \
-       STATIC_ROOT=${ARCHES_BASE_STATIC} \
-       python manage.py collectstatic --noinput --skip-checks
+       python manage.py collectstatic --noinput --skip-checks \
+    && mv ${ARCHES_ROOT}/arches/staticfiles ${ARCHES_BASE_STATIC}
 
 # Set default workdir
 WORKDIR ${ARCHES_ROOT}
